@@ -39,6 +39,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import com.example.winkit.data.NetworkModule
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.delay
 
 // Defines the 4 stages of this screen
 enum class CheckoutStep {
@@ -50,32 +51,42 @@ fun PolicyCheckoutScreen(onBack: () -> Unit, onPaymentSuccess: () -> Unit) {
     var currentStep by remember { mutableStateOf(CheckoutStep.ANALYZING) }
 
     // --- ADD THESE MISSING STATE VARIABLES ---
-    var weeklyPremium by remember { mutableStateOf("132") }
-    var maxPayout by remember { mutableStateOf("800") }
+    var weeklyPremium by remember { mutableStateOf("...") }
+    var maxPayout by remember { mutableStateOf("...") }
+    // Add a variable to hold the policy ID for later use (like the success screen)
+    var currentPolicyId by remember { mutableStateOf("") }
 
-    // AI Analysis & API Call Sequence
     LaunchedEffect(Unit) {
         try {
-            // 1. Ask Supabase for the pre-calculated offer
-            val responseList = NetworkModule.api.getOfferForRider("eq.WKT-1001")
-
+            // Fetch the active policy for our hardcoded demo worker
+            val responseList = NetworkModule.api.getOfferForRider()
+            
             if (responseList.isNotEmpty()) {
-                val offer = responseList.first()
-                // This updates the UI with the live database numbers!
-                weeklyPremium = offer.weekly_premium.toInt().toString()
-                maxPayout = offer.max_payout.toInt().toString()
+                val policy = responseList.first()
+                // Update UI state. Ensure we handle potential nulls gracefully if the DB schema changes
+                weeklyPremium = policy.premium_paid?.toInt()?.toString() ?: "132"
+                maxPayout = policy.max_daily_coverage?.toInt()?.toString() ?: "800"
+                currentPolicyId = policy.policy_id ?: ""
+                Log.d("Supabase", "Successfully fetched policy: ${policy.policy_id}")
+            } else {
+                 Log.w("Supabase", "No active policy found for worker WKT-1001")
+                 // Set some reasonable defaults if no row exists yet during testing
+                 weeklyPremium = "132"
+                 maxPayout = "800"
             }
-
-            delay(3000)
+            
+            delay(1500) // Keep a short delay so the user sees the "Analyzing" state briefly
             currentStep = CheckoutStep.OFFER
-
+            
         } catch (e: Exception) {
             Log.e("SupabaseError", "Failed to fetch from DB: ${e.message}")
-            delay(3000)
+            // Fallback UI if the network call fails
+            weeklyPremium = "132"
+            maxPayout = "800"
+            delay(1500)
             currentStep = CheckoutStep.OFFER
         }
     }
-
     // Payment Processing Sequence
     LaunchedEffect(currentStep) {
         when (currentStep) {
@@ -98,12 +109,14 @@ fun PolicyCheckoutScreen(onBack: () -> Unit, onPaymentSuccess: () -> Unit) {
                 CheckoutStep.ANALYZING -> {
                     AiAnalyzingView()
                 }
-                CheckoutStep.OFFER, CheckoutStep.PROCESSING_PAYMENT, CheckoutStep.SUCCESS -> {
-                    PolicyOfferView(
-                        onBack = onBack,
-                        onSwipeComplete = { currentStep = CheckoutStep.PROCESSING_PAYMENT }
-                    )
-                }
+              CheckoutStep.OFFER, CheckoutStep.PROCESSING_PAYMENT, CheckoutStep.SUCCESS -> {
+              PolicyOfferView(
+                weeklyPremium = weeklyPremium, // Pass the data!
+                maxPayout = maxPayout,         // Pass the data!
+                onBack = onBack,
+                onSwipeComplete = { currentStep = CheckoutStep.PROCESSING_PAYMENT }
+              )
+            }
             }
         }
 
@@ -214,7 +227,7 @@ fun AiAnalyzingView() {
 
 // ─── 2. THE POLICY OFFER UI ────────────────────────────────────────────────
 @Composable
-fun PolicyOfferView(onBack: () -> Unit, onSwipeComplete: () -> Unit) {
+fun PolicyOfferView(weeklyPremium: String, maxPayout: String, onBack: () -> Unit, onSwipeComplete: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize()) {
         val gradientBrush = Brush.verticalGradient(listOf(Color(0xFF0A2A59), Color(0xFF006C7A)))
         
@@ -257,11 +270,7 @@ fun PolicyOfferView(onBack: () -> Unit, onSwipeComplete: () -> Unit) {
                 ) {
                     Column(modifier = Modifier.padding(24.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            //Surface(shape = CircleShape, color = Color(0xFFE8F5E9), modifier = Modifier.size(40.dp)) {
-                            //    Icon(Icons.Default.Security, contentDescription = null, tint = Color(0xFF4CAF50), modifier = Modifier.padding(8.dp))
-                            //}
                             Spacer(modifier = Modifier.width(6.dp))
-                            //Text("GIG PROTECT", fontWeight = FontWeight.Black, fontSize = 18.sp, color = Color(0xFF0A192F), letterSpacing = 1.sp)
                         }
 
                         Spacer(modifier = Modifier.height(24.dp))
@@ -276,8 +285,8 @@ fun PolicyOfferView(onBack: () -> Unit, onSwipeComplete: () -> Unit) {
                             ) {
                                 Column(modifier = Modifier.padding(16.dp)) {
                                     Text("WEEKLY PREMIUM", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text("₹132", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color(0xFF0A192F))
+                                    Spacer(modifier = Modifier.height(4.dp)) 
+                                    Text("₹$weeklyPremium", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color(0xFF0A192F))                                
                                 }
                             }
                             // Max Payout Box
@@ -289,7 +298,7 @@ fun PolicyOfferView(onBack: () -> Unit, onSwipeComplete: () -> Unit) {
                                 Column(modifier = Modifier.padding(16.dp)) {
                                     Text("MAX PAYOUT", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
                                     Spacer(modifier = Modifier.height(4.dp))
-                                    Text("₹800", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color(0xFF4CAF50))
+                                    Text("₹$maxPayout", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color(0xFF4CAF50))                                    
                                     Text("per incident", fontSize = 12.sp, color = Color(0xFF4CAF50))
                                 }
                             }
@@ -329,12 +338,11 @@ fun PolicyOfferView(onBack: () -> Unit, onSwipeComplete: () -> Unit) {
 
             // Bottom Slider
             Box(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp), contentAlignment = Alignment.Center) {
-                SwipeToPaySlider(onSwipeComplete = onSwipeComplete)
-            }
+                SwipeToPaySlider(weeklyPremium = weeklyPremium, onSwipeComplete = onSwipeComplete)
+            }        
         }
     }
 }
-
 @Composable
 fun CoverageRow(text: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -348,7 +356,7 @@ fun CoverageRow(text: String) {
 
 // ─── 3. SWIPE TO PAY LOGIC ─────────────────────────────────────────────────
 @Composable
-fun SwipeToPaySlider(onSwipeComplete: () -> Unit) {
+fun SwipeToPaySlider(weeklyPremium: String, onSwipeComplete: () -> Unit){
     val sliderWidth = 320.dp
     val thumbSize = 56.dp
     val sliderWidthPx = with(LocalDensity.current) { sliderWidth.toPx() }
@@ -365,9 +373,9 @@ fun SwipeToPaySlider(onSwipeComplete: () -> Unit) {
             .background(Color(0xFF0A192F), RoundedCornerShape(32.dp)),
         contentAlignment = Alignment.CenterStart
     ) {
-        Text(
-            text = "Swipe to Auto-Pay ₹132 >>>",
-            color = Color.White.copy(alpha = 0.6f),
+       Text(
+            text = "Swipe to Auto-Pay ₹$weeklyPremium >>>",
+            color = Color.White.copy(alpha = 0.6f),           
             fontWeight = FontWeight.Bold,
             modifier = Modifier.align(Alignment.Center)
         )
