@@ -27,9 +27,8 @@ import androidx.navigation.compose.dialog
 fun AppNavigation(isLoggedIn: Boolean, sharedPref: SharedPreferences) {
     val navController = rememberNavController()
     // Create the global ViewModel here
-    val walletViewModel: WalletViewModel = viewModel()
     val dashboardViewModel: DashboardViewModel = viewModel()
-
+    val walletViewModel = androidx.lifecycle.viewmodel.compose.viewModel<WalletViewModel>()
     var activeWorkerId by remember { mutableStateOf("") }
 
     // 🔴 HARDCODED FOR DEMO: Always boot to the login screen!
@@ -97,7 +96,12 @@ fun AppNavigation(isLoggedIn: Boolean, sharedPref: SharedPreferences) {
 
         // --- SCREEN 6: WALLET ---
         composable("wallet") {
-            WalletScreen(navController = navController, viewModel = walletViewModel)
+            // Assume you are pulling dynamicWorkerId from your Login/Auth state
+            WalletScreen(
+                workerId = activeWorkerId, // Pass the real ID here!
+                navController = navController,
+                viewModel = walletViewModel
+            )
         }
 
         // --- SCREEN 7: DISASTER ALERT ---

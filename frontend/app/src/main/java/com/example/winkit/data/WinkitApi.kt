@@ -41,11 +41,12 @@ data class SupabaseWorker(
 )
 
 // 2. Earnings & Activity (For the Wallet Screen)
+// In winkitapi.kt
 data class SupabaseDailyActivity(
-    val log_date: String?,
-    val hours_online: Double?,
-    val deliveries_completed: Int?,
-    val daily_earnings: Double?
+    @SerializedName("log_date") val log_date: String?,
+    @SerializedName("hours_online") val hours_online: Double?,
+    @SerializedName("deliveries_completed") val deliveries_completed: Int?,
+    @SerializedName("daily_earnings") val daily_earnings: Double?
 )
 
 // 3. Claims History (For Notifications/History Screen)

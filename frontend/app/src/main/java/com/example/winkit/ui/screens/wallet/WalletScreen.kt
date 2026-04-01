@@ -1,6 +1,6 @@
 package com.example.winkit.ui.screens.wallet
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,59 +15,62 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.text.SimpleDateFormat
-import java.util.*
 import androidx.navigation.NavController
 import com.example.winkit.ui.components.ShiftSafeBottomNav
-import androidx.lifecycle.viewmodel.compose.viewModel
-
-// --- DATA MODELS ---
 
 @Composable
 fun WalletScreen(
+    workerId: String, // 🔥 DYNAMIC ID ADDED HERE
     navController: NavController, 
     viewModel: WalletViewModel
 ) {
-    
+    // 🔥 THIS IS THE MAGIC: Fetch data the moment the screen loads!
+    LaunchedEffect(workerId) {
+        viewModel.fetchRealLedgerData(workerId)
+    }
+
     Scaffold(
         bottomBar = { ShiftSafeBottomNav(navController = navController) },
-        containerColor = Color(0xFFF8F9FA)
+        containerColor = Color(0xFFF8F9FA),
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { viewModel.syncLedgerAndCheckClaims(workerId) }, // Pass ID to Sync
+                containerColor = Color(0xFF074768),
+                contentColor = Color.White
+            ) {
+                Icon(Icons.Default.Sync, contentDescription = "Sync Ledger")
+            }
+        }
     ) { paddingValues ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item { Spacer(modifier = Modifier.height(16.dp)) }
 
-            // 1. Pass the ViewModel's state to the Card
-            item {
-                WalletBalanceCard(viewModel.walletBalance, viewModel.totalEarnings, viewModel.totalPayouts)
-            }
+            item { WalletBalanceCard(viewModel.walletBalance, viewModel.totalEarnings, viewModel.totalPayouts) }
 
-            // 2. Point the buttons to the ViewModel functions
             item {
-                SimulationActionsCard(
-                    onAddEarning = { viewModel.simulateGigEarning() },
-                    onDeductPremium = { viewModel.deductPremium() },
-                    onWeatherPayout = { viewModel.simulateWeatherPayout() },
-                    onRelocationPayout = { viewModel.simulateRelocationPayout() }
-                )
+                AnimatedVisibility(visible = viewModel.trackerStep >= 0) {
+                    LiveClaimTracker(currentStep = viewModel.trackerStep)
+                }
             }
 
             item {
-                Text("Transaction History", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1A1A), modifier = Modifier.padding(top = 8.dp))
+                Text("Ledger History", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1A1A), modifier = Modifier.padding(top = 8.dp))
             }
 
-            // 3. Read the transactions list directly from the ViewModel
             items(viewModel.transactions, key = { it.id }) { tx ->
                 TransactionRow(tx)
             }
 
-            item { Spacer(modifier = Modifier.height(32.dp)) }
+            item { Spacer(modifier = Modifier.height(80.dp)) }
         }
     }
 }
@@ -146,45 +149,81 @@ fun StatBox(title: String, amount: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun SimulationActionsCard(onAddEarning: () -> Unit, onDeductPremium: () -> Unit, onWeatherPayout: () -> Unit, onRelocationPayout: () -> Unit) {
+fun LiveClaimTracker(currentStep: Int) {
+    val steps = listOf(
+        "Trigger Confirmed" to "Weather API verified threshold",
+        "Eligibility Check" to "Active policy, correct zone",
+        "Payout Calculated" to "Amount locked based on severity",
+        "Transfer Initiated" to "UPI / IMPS processing",
+        "Record Updated" to "Core systems reconciled"
+    )
+
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = Color(0xFFFFFDE7), // Light yellow tint
-        border = BorderStroke(1.dp, Color(0xFFFFF59D)),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Bolt, contentDescription = null, tint = Color(0xFFF57F17), modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Simulation Actions", color = Color(0xFFF57F17), fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SimulationButton("+ Gig Earning", Modifier.weight(1f), onAddEarning)
-                SimulationButton("- Deduct Premium", Modifier.weight(1f), onDeductPremium)
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SimulationButton("+ Weather Payout", Modifier.weight(1f), onWeatherPayout)
-                SimulationButton("+ Relocation Payout", Modifier.weight(1f), onRelocationPayout)
-            }
-        }
-    }
-}
-
-@Composable
-fun SimulationButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(8.dp),
         color = Color.White,
-        border = BorderStroke(1.dp, Color(0xFFFFE082)),
-        modifier = modifier.height(40.dp)
+        shadowElevation = 4.dp,
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
     ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-            Text(text, color = Color(0xFFF57F17), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Autorenew, contentDescription = null, tint = Color(0xFF074768))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Live Claim Automation", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF1A1A2E))
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+
+            steps.forEachIndexed { index, step ->
+                val isCompleted = currentStep > index
+                val isActive = currentStep == index
+                
+                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    // Status Indicator
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(
+                                when {
+                                    isCompleted -> Color(0xFF00E676)
+                                    isActive -> Color(0xFFFFC107)
+                                    else -> Color(0xFFE0E0E0)
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isCompleted) {
+                            Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.width(12.dp))
+                    
+                    // Text Details
+                    Column {
+                        Text(
+                            text = step.first,
+                            fontWeight = if (isActive || isCompleted) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isActive || isCompleted) Color(0xFF1A1A2E) else Color.Gray,
+                            fontSize = 14.sp
+                        )
+                        if (isActive || isCompleted) {
+                            Text(text = step.second, color = Color.Gray, fontSize = 11.sp)
+                        }
+                    }
+                }
+                
+                // Connecting Line
+                if (index < steps.size - 1) {
+                    Box(
+                        modifier = Modifier
+                            .padding(start = 11.dp)
+                            .width(2.dp)
+                            .height(16.dp)
+                            .background(if (isCompleted) Color(0xFF00E676) else Color(0xFFE0E0E0))
+                    )
+                }
+            }
         }
     }
 }
@@ -233,4 +272,3 @@ fun TransactionRow(tx: Transaction) {
         }
     }
 }
-

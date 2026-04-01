@@ -1,8 +1,8 @@
 package com.example.winkit.ui.screens.wallet
 
+import android.util.Log
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowOutward
-import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.runtime.mutableStateListOf
@@ -12,12 +12,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.winkit.data.NetworkModule
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
-// Moved the data class here so the ViewModel can manage it
+// ── DATA MODEL ─────────────────────────────────────────────────────────────
 data class Transaction(
     val id: String = UUID.randomUUID().toString(),
     val title: String,
@@ -30,48 +34,124 @@ data class Transaction(
     val iconTintColor: Color
 )
 
+// ── VIEW MODEL ─────────────────────────────────────────────────────────────
 class WalletViewModel : ViewModel() {
-    // 1. Holding the state globally
-    var walletBalance by mutableStateOf(620)
+    
+    var walletBalance by mutableStateOf(0)
         private set
-    var totalEarnings by mutableStateOf(1320)
+    var totalEarnings by mutableStateOf(0)
         private set
     var totalPayouts by mutableStateOf(0)
         private set
 
-    val transactions = mutableStateListOf(
-        Transaction(title = "Delivery Earning (5km)", type = "EARNING", amount = 120, isPositive = true, timestamp = "20 Mar at 09:00 PM", icon = Icons.Default.ArrowOutward, iconBgColor = Color(0xFFE8F5E9), iconTintColor = Color(0xFF4CAF50)),
-        Transaction(title = "Paid relocation to alternate dark store", type = "RELOCATION PAYOUT", amount = 113, isPositive = true, timestamp = "20 Mar at 09:00 PM", icon = Icons.Default.NearMe, iconBgColor = Color(0xFFF3E5F5), iconTintColor = Color(0xFF9C27B0)),
-        Transaction(title = "Weekly Premium", type = "PREMIUM DEDUCTION", amount = 49, isPositive = false, timestamp = "20 Mar at 09:00 PM", icon = Icons.Default.Security, iconBgColor = Color(0xFFFFEBEE), iconTintColor = Color(0xFFF44336))
-    )
+    var trackerStep by mutableStateOf(-1)
+        private set
+
+    val transactions = mutableStateListOf<Transaction>()
 
     private fun getCurrentTime(): String {
         return SimpleDateFormat("dd MMM 'at' hh:mm a", Locale.getDefault()).format(Date())
     }
 
-    // 2. These functions act as the bridge. 
-    // Right now they just do math. Later, your AI Backend API calls go right inside here!
-    
-    fun simulateGigEarning(amount: Int = 150) {
-        walletBalance += amount
-        totalEarnings += amount
-        transactions.add(0, Transaction(title = "Surge Gig Earning", type = "EARNING", amount = amount, isPositive = true, timestamp = getCurrentTime(), icon = Icons.Default.ArrowOutward, iconBgColor = Color(0xFFE8F5E9), iconTintColor = Color(0xFF4CAF50)))
+    // --- 1. INITIAL LOAD (DYNAMIC WORKER ID) ---
+    fun fetchRealLedgerData(workerId: String) {
+        viewModelScope.launch {
+            try {
+                // Fetch ONLY this specific worker's data!
+                val realClaims = NetworkModule.api.getWorkerClaims(workerId = "eq.$workerId")
+                val realActivity = NetworkModule.api.getWorkerActivity(workerId = "eq.$workerId")
+                Log.d("Wallet", "SUCCESS: Loaded ${realClaims.size} claims and ${realActivity.size} shifts for $workerId!")
+
+                var calculatedBalance = 0
+                var calcEarnings = 0
+                var calcPayouts = 0
+                
+                transactions.clear()
+
+                realActivity.forEach { activity ->
+                    val amt = activity.daily_earnings?.toInt() ?: 0
+                    calcEarnings += amt
+                    calculatedBalance += amt
+                    transactions.add(
+                        Transaction(
+                            title = "Daily Earning (${activity.deliveries_completed ?: 0} orders)",
+                            type = "EARNING", amount = amt, isPositive = true, timestamp = activity.log_date ?: getCurrentTime(),
+                            icon = Icons.Default.ArrowOutward, iconBgColor = Color(0xFFE8F5E9), iconTintColor = Color(0xFF4CAF50)
+                        )
+                    )
+                }
+
+                realClaims.forEach { claim ->
+                    val amt = claim.payout_amt?.toInt() ?: 0
+                    calcPayouts += amt
+                    calculatedBalance += amt
+                    transactions.add(
+                        Transaction(
+                            title = "Parametric Payout (${claim.status})",
+                            type = "INSURANCE CLAIM", amount = amt, isPositive = true, timestamp = claim.created_at?.substring(0, 10) ?: getCurrentTime(),
+                            icon = Icons.Default.WaterDrop, iconBgColor = Color(0xFFE3F2FD), iconTintColor = Color(0xFF2196F3)
+                        )
+                    )
+                }
+                
+                calculatedBalance -= 49
+                transactions.add(
+                    Transaction(
+                        title = "Weekly Premium", type = "PREMIUM DEDUCTION", amount = 49, isPositive = false, timestamp = "28 Mar",
+                        icon = Icons.Default.Security, iconBgColor = Color(0xFFFFEBEE), iconTintColor = Color(0xFFF44336)
+                    )
+                )
+
+                walletBalance = calculatedBalance
+                totalEarnings = calcEarnings
+                totalPayouts = calcPayouts
+
+            } catch (e: Exception) {
+                Log.e("Wallet", "Failed to load real DB data: ${e.message}")
+            }
+        }
     }
 
-    fun deductPremium(amount: Int = 49) {
-        walletBalance -= amount
-        transactions.add(0, Transaction(title = "Weekly Premium", type = "PREMIUM DEDUCTION", amount = amount, isPositive = false, timestamp = getCurrentTime(), icon = Icons.Default.Security, iconBgColor = Color(0xFFFFEBEE), iconTintColor = Color(0xFFF44336)))
-    }
+    // --- 2. THE LIVE DEMO SYNC (DYNAMIC WORKER ID) ---
+    fun syncLedgerAndCheckClaims(workerId: String) {
+        if (trackerStep != -1) return 
 
-    fun simulateWeatherPayout(amount: Int = 720) {
-        walletBalance += amount
-        totalPayouts += amount
-        transactions.add(0, Transaction(title = "Heavy Rainfall Coverage", type = "INSURANCE PAYOUT", amount = amount, isPositive = true, timestamp = getCurrentTime(), icon = Icons.Default.WaterDrop, iconBgColor = Color(0xFFE3F2FD), iconTintColor = Color(0xFF2196F3)))
-    }
+        viewModelScope.launch {
+            trackerStep = 0; delay(1200) 
+            trackerStep = 1; delay(1200) 
+            trackerStep = 2; delay(1200) 
+            trackerStep = 3; delay(1200) 
+            trackerStep = 4 
+            
+            try {
+                // Fetch the absolute newest claims for THIS specific worker
+                val latestClaims = NetworkModule.api.getWorkerClaims(workerId = "eq.$workerId", order = "created_at.desc")
+                val newestClaim = latestClaims.firstOrNull()
+               Log.d("Wallet", "SUCCESS: Live Sync caught a payout of ₹${newestClaim?.payout_amt} with status: ${newestClaim?.status}")
 
-    fun simulateRelocationPayout(amount: Int = 113) {
-        walletBalance += amount
-        totalPayouts += amount
-        transactions.add(0, Transaction(title = "Paid relocation to alternate store", type = "RELOCATION PAYOUT", amount = amount, isPositive = true, timestamp = getCurrentTime(), icon = Icons.Default.NearMe, iconBgColor = Color(0xFFF3E5F5), iconTintColor = Color(0xFF9C27B0)))
+                if (newestClaim != null) {
+                    val realPayoutAmt = newestClaim.payout_amt?.toInt() ?: 0
+                    
+                    walletBalance += realPayoutAmt
+                    totalPayouts += realPayoutAmt
+                    
+                    transactions.add(0, Transaction(
+                        title = "Automated Flood Relief (Live)", 
+                        type = "PARAMETRIC PAYOUT", 
+                        amount = realPayoutAmt, 
+                        isPositive = true, 
+                        timestamp = getCurrentTime(), 
+                        icon = Icons.Default.WaterDrop, 
+                        iconBgColor = Color(0xFFE3F2FD), 
+                        iconTintColor = Color(0xFF2196F3)
+                    ))
+                }
+            } catch (e: Exception) {
+                Log.e("Wallet", "Failed to fetch live claim: ${e.message}")
+            }
+
+            delay(1500) 
+            trackerStep = -1 
+        }
     }
 }
