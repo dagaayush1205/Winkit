@@ -42,6 +42,14 @@ import android.webkit.WebViewClient
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.BorderStroke
 import android.view.ViewGroup
+import androidx.compose.material.icons.filled.Warning
+import android.Manifest
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 private val BannerStart  = Color(0xFF5B2D8E)   // deep purple (left)
 private val BannerEnd    = Color(0xFF8B3FBF)   // violet (right)
@@ -60,15 +68,42 @@ private val NavUnselected= Color(0xFFB0B0C0)
 private val GpsBg        = Color(0xFFF8F9FF)
 private val GpsIcon      = Color(0xFF5B2D8E)
 
-// ── Root composable ───────────────────────────────────────────────────────
 @Composable
 fun ShiftSafeDashboard(
-    viewModel: DashboardViewModel, 
+    workerId: String,
+    viewModel: DashboardViewModel,
     navController: NavController,
     onTriggerAlert: () -> Unit
 ) {
+   val context = LocalContext.current
+    var isVerifyingLocation by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+        onResult = { permissions ->
+            val isGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true || 
+                            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+            
+            if (isGranted) {
+                // 1. Show the dark "Verifying..." overlay
+                isVerifyingLocation = true 
+                
+                // 2. Tell the ViewModel to start the background GPS/API work
+                viewModel.verifyLocationAndClaim(workerId)
+                
+                // 3. Start a totally independent UI timer for the Demo
+                coroutineScope.launch {
+                    delay(11000) // Wait 11 seconds for the "Fraud Scan" to finish
+                    isVerifyingLocation = false // Hide the overlay
+                    onTriggerAlert() // 🚨 FORCE THE MODAL TO OPEN!
+                }
+            } else {
+                Toast.makeText(context, "Location required for fraud prevention", Toast.LENGTH_LONG).show()
+            }
+        }
+    )
     Scaffold(
-        bottomBar = { ShiftSafeBottomNav(navController = navController) }, 
+        bottomBar = { ShiftSafeBottomNav(navController = navController) },
         containerColor = PageBg
     ) { innerPadding ->
         Column(
@@ -79,7 +114,7 @@ fun ShiftSafeDashboard(
         ) {
             // ── 1. Purple weather banner ──────────────────────────────────
             WeatherBanner(
-                temp = viewModel.temperature, 
+                temp = viewModel.temperature,
                 condition = viewModel.weatherCondition
             )
 
@@ -87,11 +122,11 @@ fun ShiftSafeDashboard(
 
             // ── 2. Live Risk Metrics ──────────────────────────────────────
             Text(
-                text  = "Live Risk Metrics",
+                text = "Live Risk Metrics",
                 color = TextDark,
-                fontSize   = 18.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                modifier   = Modifier.padding(horizontal = 16.dp)
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
             Spacer(modifier = Modifier.height(12.dp))
             RiskMetricsGrid(
@@ -99,21 +134,39 @@ fun ShiftSafeDashboard(
                 rainProb = viewModel.rainProbability,
                 humidity = viewModel.humidity
             )
+            
             Spacer(modifier = Modifier.height(20.dp))
 
             // ── 3. Live GPS Tracking (Interactive Map) ────────────────────
-            GpsTrackingSection()
+            // You can also trigger the "Claim" from inside here if needed
+            GpsTrackingSection(
+                onReportClick = {
+                    // This manually triggers the alert/claim flow
+                    onTriggerAlert() 
+                }
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
+            HazardReportCard(
+                onReportClick = {
+                    // This launches the permission check we set up
+                    locationPermissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION, 
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        )
+                    )
+                }
+            )
 
+            Spacer(modifier = Modifier.height(24.dp))
             // ── 4. Active Policies ────────────────────────────────────────
             ActivePoliciesSection()
 
-            Spacer(modifier = Modifier.height(32.dp)) // Extra padding for the bottom scroll
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
-}
-// ── Weather banner ─────────────────────────────────────────────────────────
+}// ── Weather banner ─────────────────────────────────────────────────────────
 @Composable
 fun WeatherBanner(temp: String, condition: String) {
 val currentTime = remember { 
@@ -426,7 +479,7 @@ fun RiskCard(
 
 // ── GPS Tracking section ───────────────────────────────────────────────────
 @Composable
-fun GpsTrackingSection() {
+fun GpsTrackingSection(onReportClick: () -> Unit = {}){
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         // Header row
         Row(
@@ -730,6 +783,52 @@ fun ActivePoliciesSection() {
                     contentDescription = "Go",
                     tint = Color(0xFF8E8E9A)
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun HazardReportCard(onReportClick: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = Color(0xFFFFF1F0), // Light Red/Alert Background
+        border = BorderStroke(1.dp, Color(0xFFFFCCC7))
+    ) {
+        Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = Icons.Default.Warning, 
+                contentDescription = null, 
+                tint = Color(0xFFF5222D),
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                "Hazardous Conditions?",
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                color = Color(0xFF820014)
+            )
+            Text(
+                "Report flood or extreme weather to secure your payout.",
+                textAlign = TextAlign.Center,
+                fontSize = 13.sp,
+                color = Color(0xFFCF1322),
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // --- THE BUTTON YOU ASKED FOR ---
+            Button(
+                onClick = onReportClick,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5222D)),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth().height(50.dp)
+            ) {
+                Text("Report Hazard & Claim Payout", fontWeight = FontWeight.Bold)
             }
         }
     }

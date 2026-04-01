@@ -22,7 +22,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-fun IntegrationScreen(onBack: () -> Unit, onNext: () -> Unit) {
+fun IntegrationScreen(onBack: () -> Unit, onNext: (String) -> Unit) {
     var selectedPlatform by remember { mutableStateOf("") }
     var partnerId by remember { mutableStateOf("") }
     
@@ -151,14 +151,17 @@ fun IntegrationScreen(onBack: () -> Unit, onNext: () -> Unit) {
         Spacer(modifier = Modifier.weight(1f))
 
         Button(
-            onClick = onNext,
-            enabled = isVerified,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0A192F), disabledContainerColor = Color.LightGray)
-        ) {
-            Text("Continue", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        }
+    onClick = { onNext(partnerId) }, // Make sure partnerId is passed here
+    enabled = isVerified,
+    modifier = Modifier.fillMaxWidth().height(56.dp),
+    shape = RoundedCornerShape(16.dp),
+    colors = ButtonDefaults.buttonColors(
+        containerColor = Color(0xFF0A192F), 
+        disabledContainerColor = Color.LightGray
+    )
+) {
+    Text("Continue", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+}
     }
 }
 

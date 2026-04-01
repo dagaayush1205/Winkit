@@ -7,6 +7,8 @@ import retrofit2.http.GET
 import retrofit2.http.Query
 import com.example.winkit.BuildConfig
 import com.google.gson.annotations.SerializedName
+import retrofit2.http.POST   
+import retrofit2.http.Body
 
 // 1. Data class matching your actual "weekly_policies" table schema
 data class SupabaseWeeklyPolicy(
@@ -19,6 +21,18 @@ data class SupabaseWeeklyPolicy(
     @SerializedName("max_daily_coverage") val max_daily_coverage: Double?,
     @SerializedName("status") val status: String
 )
+
+data class SupabaseTelemetryRow(
+    @SerializedName("worker_id") val worker_id: String,
+    @SerializedName("latitude") val latitude: Double,
+    @SerializedName("longitude") val longitude: Double,
+    @SerializedName("speed_kmh") val speed_kmh: Float,
+    @SerializedName("is_mock_location") val is_mock_location: Boolean,
+    @SerializedName("dev_settings_enabled") val dev_settings_enabled: Boolean,
+    @SerializedName("os_signature_valid") val os_signature_valid: Boolean,
+    @SerializedName("fraud_reason") val fraud_reason: String = "PENDING_VERIFICATION"
+)
+
 data class SupabaseWorker(
     val worker_id: String,
     val name: String?,
@@ -44,6 +58,12 @@ data class SupabaseClaim(
 
 interface SupabaseApiService {
     
+
+    @POST("rest/v1/raw_gps_telemetry")
+    suspend fun publishTelemetry(
+        @Body telemetry: SupabaseTelemetryRow
+    )
+
     // 1. Fetch Policy
     @GET("rest/v1/weekly_policies")
     suspend fun getOfferForRider(

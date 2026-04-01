@@ -17,13 +17,20 @@ import com.example.winkit.ui.screens.onboarding.ScheduleScreen
 import com.example.winkit.ui.screens.wallet.WalletScreen
 import com.example.winkit.ui.screens.wallet.WalletViewModel
 import com.example.winkit.ui.screens.dashboard.DashboardViewModel // Add import
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.navigation.compose.dialog
 
 @Composable
 fun AppNavigation(isLoggedIn: Boolean, sharedPref: SharedPreferences) {
     val navController = rememberNavController()
     // Create the global ViewModel here
     val walletViewModel: WalletViewModel = viewModel()
-    val dashboardViewModel: DashboardViewModel = viewModel() // ADD THIS
+    val dashboardViewModel: DashboardViewModel = viewModel()
+
+    var activeWorkerId by remember { mutableStateOf("") }
 
     // 🔴 HARDCODED FOR DEMO: Always boot to the login screen!
     val startDest = "login"
@@ -43,7 +50,10 @@ fun AppNavigation(isLoggedIn: Boolean, sharedPref: SharedPreferences) {
         composable("integration") {
             IntegrationScreen(
                 onBack = { navController.popBackStack() },
-                onNext = { navController.navigate("schedule") }
+                onNext = { enteredId ->
+                    activeWorkerId = enteredId // Save it to memory!
+                    navController.navigate("schedule")
+                }
             )
         }
 
@@ -61,6 +71,7 @@ fun AppNavigation(isLoggedIn: Boolean, sharedPref: SharedPreferences) {
         // --- SCREEN 4: CHECKOUT (AI & PAYMENT) ---
         composable("checkout") {
             PolicyCheckoutScreen(
+                workerId = activeWorkerId, // Pass it down!
                 onBack = { navController.popBackStack() },
                 onPaymentSuccess = {
                     // 🔴 DISABLED FOR DEMO: We aren't saving the persistent login state
@@ -77,7 +88,8 @@ fun AppNavigation(isLoggedIn: Boolean, sharedPref: SharedPreferences) {
         // --- SCREEN 5: DASHBOARD ---
         composable("dashboard") {
             ShiftSafeDashboard(
-                viewModel = dashboardViewModel, // PASSED HERE
+                workerId = activeWorkerId, // 🔥 Pass dynamic ID here too!
+                viewModel = dashboardViewModel,
                 navController = navController,
                 onTriggerAlert = { navController.navigate("alert") }
             )
@@ -89,9 +101,15 @@ fun AppNavigation(isLoggedIn: Boolean, sharedPref: SharedPreferences) {
         }
 
         // --- SCREEN 7: DISASTER ALERT ---
-        composable("alert") {
+        dialog("alert") {
             RelocationAlertModal(
-                onAccept = { navController.popBackStack() }
+                onAccept = {
+                    navController.popBackStack()
+                    // You can navigate to a map screen here later!
+                },
+                onDismiss = {
+                    navController.popBackStack()
+                }
             )
         }
     }

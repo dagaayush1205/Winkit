@@ -47,7 +47,7 @@ enum class CheckoutStep {
 }
 
 @Composable
-fun PolicyCheckoutScreen(onBack: () -> Unit, onPaymentSuccess: () -> Unit) {
+fun PolicyCheckoutScreen(workerId: String, onBack: () -> Unit, onPaymentSuccess: () -> Unit) {
     var currentStep by remember { mutableStateOf(CheckoutStep.ANALYZING) }
 
     // --- ADD THESE MISSING STATE VARIABLES ---
@@ -59,7 +59,7 @@ fun PolicyCheckoutScreen(onBack: () -> Unit, onPaymentSuccess: () -> Unit) {
     LaunchedEffect(Unit) {
         try {
             // Fetch the active policy for our hardcoded demo worker
-            val responseList = NetworkModule.api.getOfferForRider()
+            val responseList = NetworkModule.api.getOfferForRider(workerId = "eq.$workerId")
             
             if (responseList.isNotEmpty()) {
                 val policy = responseList.first()
