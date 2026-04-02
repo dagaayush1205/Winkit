@@ -22,6 +22,7 @@ import com.example.winkit.ui.screens.onboarding.SignUpScreen
 import com.example.winkit.ui.screens.wallet.WalletScreen
 import com.example.winkit.ui.screens.dashboard.ActivePolicyScreen
 import com.example.winkit.ui.screens.wallet.WalletViewModel
+import com.example.winkit.ui.screens.profile.ProfileScreen
 
 @Composable
 fun AppNavigation(isLoggedIn: Boolean, sharedPref: SharedPreferences) {
@@ -136,6 +137,13 @@ fun AppNavigation(isLoggedIn: Boolean, sharedPref: SharedPreferences) {
             RelocationAlertModal(
                 onAccept = { navController.popBackStack() },
                 onDismiss = { navController.popBackStack() }
+            )
+        }
+        // ── SCREEN 9: PROFILE ────────────────────────────────────────────
+        composable("profile") {
+            ProfileScreen(
+                workerId = activeWorkerId,
+                navController = navController
             )
         }
     }
