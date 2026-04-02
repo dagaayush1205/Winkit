@@ -4,6 +4,7 @@ import json
 from supabase import create_client, Client
 from config import SUPABASE_DB_URL
 from config import SUPABASE_API_KEY
+import h3
 
 supabase: Client = create_client(SUPABASE_DB_URL, SUPABASE_API_KEY)
 
@@ -72,7 +73,16 @@ def process_pending_verifications():
     for row in pending_rows:
         ping_id = row['ping_id']
         worker_id = row['worker_id']
-        
+        lat = row.get('latitude')
+        lng = row.get('longitude')
+
+        hex_id = None
+        if lat is not None and lng is not None:
+            try:
+                # Using H3 v4 syntax to get the cell ID
+                hex_id = h3.latlng_to_cell(lat, lng, 9)
+            except Exception as e:
+                print(f"{Colors.WARNING}   ⚠️ Invalid coordinates for Ping {ping_id}: {e}{Colors.ENDC}")
         # Run evaluation
         is_fraud, reason = evaluate_payload(row)
         
@@ -81,12 +91,15 @@ def process_pending_verifications():
             print(f"{Colors.FAIL}   [PING {ping_id} | {worker_id}] ❌ FRAUD: {reason}{Colors.ENDC}")
         else:
             print(f"{Colors.GREEN}   [PING {ping_id} | {worker_id}] ✅ CLEAN{Colors.ENDC}")
-            
-        # Write to Supabase
-        update_res = supabase.table("raw_gps_telemetry").update({
+        update_payload = {
             "is_flagged_fraud": is_fraud,
             "fraud_reason": reason
-        }).eq("ping_id", ping_id).execute()
+        }
+        if hex_id:
+            update_payload["h3_hex_id"] = hex_id
+
+        # Write to Supabase
+        update_res = supabase.table("raw_gps_telemetry").update(update_payload).eq("ping_id", ping_id).execute()
         
         if not update_res.data:
             print(f"{Colors.WARNING}   ⚠️ Failed to update Ping ID {ping_id} in database.{Colors.ENDC}")
