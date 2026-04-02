@@ -58,7 +58,18 @@ object SupabaseAuthHelper {
             AuthResult.Error(msg)
         }
     }
-
+suspend fun fileManualClaim(
+        workerId: String, lat: Double, lng: Double, hazardType: String, description: String
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val claim = ManualClaimInsert(workerId, lat, lng, hazardType, description)
+            NetworkModule.api.insertManualClaim(claim)
+            true
+        } catch (e: Exception) {
+            Log.e("Claims", "Manual claim failed: ${e.message}")
+            false
+        }
+    }
     // ── LOGIN ──────────────────────────────────────────────────────────────
     suspend fun loginWithPhone(phone: String): AuthResult = withContext(Dispatchers.IO) {
         try {

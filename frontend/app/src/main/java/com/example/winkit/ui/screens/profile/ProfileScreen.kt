@@ -129,35 +129,38 @@ fun ProfileScreen(workerId: String, navController: NavController) {
                 Spacer(modifier = Modifier.height(16.dp))
                 ProfileField("Email Address", email, Icons.Default.Email) { email = it }
                 Spacer(modifier = Modifier.height(16.dp))
-                ProfileField("Phone Number", phone, Icons.Default.Phone) { phone = it }
+                
+                // 🔥 SECURITY: Lock the phone number field
+                ProfileField("Phone Number (Verified Identity)", phone, Icons.Default.Phone, enabled = false) { }
 
                 Spacer(modifier = Modifier.height(40.dp))
 
                 // Save Button
                 Button(
                     onClick = {
+                        // 🔥 SECURITY: Form Validation
+                        if (name.isBlank()) {
+                            Toast.makeText(context, "Name cannot be empty", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        if (email.isNotBlank() && !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                            Toast.makeText(context, "Invalid email format", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+
                         coroutineScope.launch {
                             isSaving = true
                             try {
-                                val updates = mapOf(
-                                    "name" to name,
-                                    "email" to email,
-                                    "phone" to phone
-                                )
-                                NetworkModule.api.updateWorker(
-                                    workerId = "eq.$workerId",
-                                    workerUpdate = updates
-                                )
+                                val updates = mapOf("name" to name, "email" to email)
+                                NetworkModule.api.updateWorker(workerId = "eq.$workerId", workerUpdate = updates)
                                 Toast.makeText(context, "Profile Updated Successfully", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
-                                Log.e("ProfileUpdate", "Error: ${e.message}")
-                                Toast.makeText(context, "Update Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Update Failed", Toast.LENGTH_SHORT).show()
                             } finally {
                                 isSaving = false
                             }
                         }
-                    },
-                    modifier = Modifier
+                    },                    modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
                     shape = RoundedCornerShape(12.dp),
@@ -181,20 +184,23 @@ fun ProfileScreen(workerId: String, navController: NavController) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileField(label: String, value: String, icon: ImageVector, onValueChange: (String) -> Unit) {
+fun ProfileField(label: String, value: String, icon: ImageVector, enabled: Boolean = true, onValueChange: (String) -> Unit) {
     Column(Modifier.fillMaxWidth()) {
         Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
+            enabled = enabled, // 🔥 Controls editability
             modifier = Modifier.fillMaxWidth(),
-            leadingIcon = { Icon(icon, null, tint = Color(0xFF5B2D8E)) },
+            leadingIcon = { Icon(icon, null, tint = if (enabled) Color(0xFF5B2D8E) else Color.Gray) },
             shape = RoundedCornerShape(12.dp),
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
                 unfocusedBorderColor = Color.LightGray,
-                focusedBorderColor = Color(0xFF5B2D8E)
+                focusedBorderColor = Color(0xFF5B2D8E),
+                disabledBorderColor = Color(0xFFE0E0E0),
+                disabledTextColor = Color.DarkGray
             )
         )
     }

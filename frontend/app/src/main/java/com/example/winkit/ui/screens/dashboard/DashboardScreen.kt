@@ -68,7 +68,7 @@ fun ShiftSafeDashboard(
     var hasPolicy by remember { mutableStateOf<Boolean?>(null) }
     var walletBalance by remember { mutableStateOf(0.0) }
     var workerName by remember { mutableStateOf("Rider") }
-
+    var showManualClaimDialog by remember { mutableStateOf(false) }
     // ── CHATBOT STATE ───────────────────────────────────────────────────────
     var showChatbot by remember { mutableStateOf(false) }
     var isVerifyingLocation by remember { mutableStateOf(false) }
@@ -186,7 +186,7 @@ fun ShiftSafeDashboard(
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        HazardReportCard(
+                        /*HazardReportCard(
                             onReportClick = {
                                 locationPermissionLauncher.launch(
                                     arrayOf(
@@ -195,6 +195,9 @@ fun ShiftSafeDashboard(
                                     )
                                 )
                             }
+                        )*/ 
+                        HazardReportCard(
+                            onReportClick = { showManualClaimDialog = true }
                         )
 
                         Spacer(modifier = Modifier.height(24.dp))
@@ -203,7 +206,34 @@ fun ShiftSafeDashboard(
                     }
                 }
             } // <--- End of main scrollable Column
-
+            // ── MANUAL CLAIM DIALOG ──
+            if (showManualClaimDialog) {
+                ManualClaimDialog(
+                    onDismiss = { showManualClaimDialog = false },
+                    onSubmit = { hazardType, description ->
+                        showManualClaimDialog = false
+                        
+                        // Launch coroutine to push to Supabase
+                        coroutineScope.launch {
+                            Toast.makeText(context, "Submitting claim...", Toast.LENGTH_SHORT).show()
+                            
+                            val success = com.example.winkit.data.SupabaseAuthHelper.fileManualClaim(
+                                workerId = workerId,
+                                lat = 12.9815, // Use real GPS coordinates if available!
+                                lng = 80.2230,
+                                hazardType = hazardType,
+                                description = description
+                            )
+                            
+                            if (success) {
+                                Toast.makeText(context, "Claim submitted for review!", Toast.LENGTH_LONG).show()
+                            } else {
+                                Toast.makeText(context, "Failed to submit claim", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                )
+            }
             // ── CHATBOT SHEET (Floats on top of the UI) ──
             if (showChatbot) {
                 WinkitChatbotSheet(onDismiss = { showChatbot = false })
@@ -431,43 +461,134 @@ fun FirstTimeActivationCard(onActivate: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
-        shape = RoundedCornerShape(20.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
-        Column(
-            Modifier.padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(Color(0xFF1A0A3B), Color(0xFF5B2D8E)) // Deep premium purple
+                    )
+                )
+                .padding(24.dp)
         ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // Shiny Icon Badge
+                Surface(
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = 0.15f),
+                    modifier = Modifier.size(64.dp)
+                ) {
+                    Icon(
+                        Icons.Default.VerifiedUser,
+                        contentDescription = "Secure",
+                        tint = Color(0xFF00E5A0), // Neon Green
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxSize()
+                    )
+                }
 
-            Icon(
-                Icons.Default.VerifiedUser,
-                contentDescription = null,
-                tint = Color(0xFF2E7D32),
-                modifier = Modifier.size(40.dp)
-            )
+                Spacer(modifier = Modifier.height(16.dp))
 
-            Spacer(Modifier.height(12.dp))
+                Text(
+                    text = "Activate Income Protection",
+                    color = Color.White,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 20.sp,
+                    textAlign = TextAlign.Center
+                )
 
-            Text(
-                "Activate Your First Week",
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
-            )
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                "Start your income protection for ₹49",
-                textAlign = TextAlign.Center
-            )
+                Text(
+                    text = "Secure your earnings against floods, heatwaves, and extreme weather. Start your first week of coverage now.",
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 13.sp,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 18.sp
+                )
 
-            Spacer(Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-            Button(
-                onClick = onActivate,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Activate ₹49")
+                Button(
+                    onClick = onActivate,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E5A0)),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp)
+                ) {
+                    Text("Activate Now • ₹49/wk", color = Color(0xFF1A0A3B), fontWeight = FontWeight.Black, fontSize = 16.sp)
+                }
             }
         }
     }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ManualClaimDialog(
+    onDismiss: () -> Unit,
+    onSubmit: (String, String) -> Unit
+) {
+    var description by remember { mutableStateOf("") }
+    var selectedHazard by remember { mutableStateOf("Flood / Waterlogging") }
+    val hazards = listOf("Flood / Waterlogging", "Extreme Heatwave", "Dark Store Curfew", "Vehicle Breakdown")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color.White,
+        title = { Text("File Manual Claim", fontWeight = FontWeight.Bold, color = Color(0xFF1A1A2E)) },
+        text = {
+            Column {
+                Text("Select Hazard Type", fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Simple dropdown simulation (Scrollable Row of chips for hackathon speed)
+                Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                    hazards.forEach { hazard ->
+                        FilterChip(
+                            selected = selectedHazard == hazard,
+                            onClick = { selectedHazard = hazard },
+                            label = { Text(hazard, fontSize = 12.sp) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color(0xFFE8F5E9),
+                                selectedLabelColor = Color(0xFF2E7D32)
+                            ),
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text("Description (Optional)", fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    placeholder = { Text("E.g., Road blocked near Velachery bridge", fontSize = 12.sp) },
+                    modifier = Modifier.fillMaxWidth().height(100.dp),
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSubmit(selectedHazard, description) },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5222D)),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("Submit Claim", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = Color.Gray)
+            }
+        }
+    )
 }
