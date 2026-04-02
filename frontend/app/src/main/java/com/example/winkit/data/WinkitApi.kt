@@ -1,5 +1,6 @@
 package com.example.winkit.data
 
+import android.util.Log
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -7,49 +8,67 @@ import retrofit2.http.GET
 import retrofit2.http.Query
 import com.example.winkit.BuildConfig
 import com.google.gson.annotations.SerializedName
-import retrofit2.http.POST   
+import retrofit2.http.POST
 import retrofit2.http.Body
+import retrofit2.http.Headers
 
-// 1. Data class matching your actual "weekly_policies" table schema
+// ─────────────────────────────────────────────────────────────────────────
+// DATA MODELS
+// ─────────────────────────────────────────────────────────────────────────
+
 data class SupabaseWeeklyPolicy(
-    @SerializedName("policy_id") val policy_id: String,
-    @SerializedName("created_at") val created_at: String,
-    @SerializedName("worker_id") val worker_id: String,
-    @SerializedName("week_start_date") val week_start_date: String,
-    @SerializedName("week_end_date") val week_end_date: String,
-    @SerializedName("premium_paid") val premium_paid: Double?,
+    @SerializedName("policy_id")          val policy_id: String,
+    @SerializedName("created_at")         val created_at: String,
+    @SerializedName("worker_id")          val worker_id: String,
+    @SerializedName("week_start_date")    val week_start_date: String,
+    @SerializedName("week_end_date")      val week_end_date: String,
+    @SerializedName("premium_paid")       val premium_paid: Double?,
     @SerializedName("max_daily_coverage") val max_daily_coverage: Double?,
-    @SerializedName("status") val status: String
+    @SerializedName("status")             val status: String
 )
 
 data class SupabaseTelemetryRow(
-    @SerializedName("worker_id") val worker_id: String,
-    @SerializedName("latitude") val latitude: Double,
-    @SerializedName("longitude") val longitude: Double,
-    @SerializedName("speed_kmh") val speed_kmh: Float,
-    @SerializedName("is_mock_location") val is_mock_location: Boolean,
+    @SerializedName("worker_id")            val worker_id: String,
+    @SerializedName("latitude")             val latitude: Double,
+    @SerializedName("longitude")            val longitude: Double,
+    @SerializedName("speed_kmh")            val speed_kmh: Float,
+    @SerializedName("is_mock_location")     val is_mock_location: Boolean,
     @SerializedName("dev_settings_enabled") val dev_settings_enabled: Boolean,
-    @SerializedName("os_signature_valid") val os_signature_valid: Boolean,
-    @SerializedName("fraud_reason") val fraud_reason: String = "PENDING_VERIFICATION"
+    @SerializedName("os_signature_valid")   val os_signature_valid: Boolean,
+    @SerializedName("fraud_reason")         val fraud_reason: String = "PENDING_VERIFICATION"
 )
 
 data class SupabaseWorker(
-    val worker_id: String,
-    val name: String?,
-    val trust_score: Int?,
-    val status: String?
+    @SerializedName("worker_id")   val worker_id: String,
+    @SerializedName("name")        val name: String?,
+    @SerializedName("phone")       val phone: String?,
+    @SerializedName("trust_score") val trust_score: Int?,
+    @SerializedName("status")      val status: String?,
+    @SerializedName("email")       val email: String?,
+    @SerializedName("gender")      val gender: String?,
+    @SerializedName("access")      val access: Boolean?
 )
 
-// 2. Earnings & Activity (For the Wallet Screen)
-// In winkitapi.kt
+data class SupabaseWorkerInsert(
+    @SerializedName("worker_id")      val worker_id: String,
+    @SerializedName("name")           val name: String,
+    @SerializedName("phone")          val phone: String,
+    @SerializedName("aadhar_hash")    val aadhar_hash: String,
+    @SerializedName("gender")         val gender: String,
+    @SerializedName("primary_h3_hex") val primary_h3_hex: String,
+    @SerializedName("trust_score")    val trust_score: Int,
+    @SerializedName("status")         val status: String,
+    @SerializedName("access")         val access: Boolean,
+    @SerializedName("email")          val email: String?
+)
+
 data class SupabaseDailyActivity(
-    @SerializedName("log_date") val log_date: String?,
-    @SerializedName("hours_online") val hours_online: Double?,
+    @SerializedName("log_date")             val log_date: String?,
+    @SerializedName("hours_online")         val hours_online: Double?,
     @SerializedName("deliveries_completed") val deliveries_completed: Int?,
-    @SerializedName("daily_earnings") val daily_earnings: Double?
+    @SerializedName("daily_earnings")       val daily_earnings: Double?
 )
 
-// 3. Claims History (For Notifications/History Screen)
 data class SupabaseClaim(
     val claim_id: String,
     val payout_amt: Double?,
@@ -57,62 +76,84 @@ data class SupabaseClaim(
     val created_at: String?
 )
 
+// ─────────────────────────────────────────────────────────────────────────
+// API INTERFACE
+// ─────────────────────────────────────────────────────────────────────────
+
 interface SupabaseApiService {
-    
+
+    @Headers("Prefer: return=minimal")
+    @POST("rest/v1/Workers")
+    suspend fun insertWorker(@Body worker: SupabaseWorkerInsert)
+
+    @GET("rest/v1/Workers")
+    suspend fun getWorkerByPhone(
+        @Query("phone")  phone:  String,
+        @Query("select") select: String = "worker_id,name,phone,status,trust_score,email,gender,access"
+    ): List<SupabaseWorker>
 
     @POST("rest/v1/raw_gps_telemetry")
-    suspend fun publishTelemetry(
-        @Body telemetry: SupabaseTelemetryRow
-    )
+    suspend fun publishTelemetry(@Body telemetry: SupabaseTelemetryRow)
 
-    // 1. Fetch Policy
     @GET("rest/v1/weekly_policies")
     suspend fun getOfferForRider(
-        // CHANGED TO REAL WORKER ID
         @Query("worker_id") workerId: String = "eq.ZEP-1001",
-        // CHANGED TO UPPERCASE 'ACTIVE'
-        @Query("status") status: String = "eq.ACTIVE" 
+        @Query("status")    status:   String = "eq.ACTIVE"
     ): List<SupabaseWeeklyPolicy>
 
-    // 2. Fetch Worker Profile
     @GET("rest/v1/Workers")
     suspend fun getWorkerProfile(
         @Query("worker_id") workerId: String = "eq.ZEP-1001"
     ): List<SupabaseWorker>
 
-    // 3. Fetch Wallet/Earnings History (Newest first)
     @GET("rest/v1/worker_daily_activity")
     suspend fun getWorkerActivity(
         @Query("worker_id") workerId: String = "eq.ZEP-1001",
-        @Query("order") order: String = "log_date.desc" 
+        @Query("order")     order:    String = "log_date.desc"
     ): List<SupabaseDailyActivity>
 
-    // 4. Fetch Claims/Payouts History (Newest first)
     @GET("rest/v1/claims_and_payouts")
     suspend fun getWorkerClaims(
         @Query("worker_id") workerId: String = "eq.ZEP-1001",
-        @Query("order") order: String = "created_at.desc"
+        @Query("order")     order:    String = "created_at.desc"
     ): List<SupabaseClaim>
 }
 
-object NetworkModule {
-    
-    // We REMOVED the hardcoded strings here!
+// ─────────────────────────────────────────────────────────────────────────
+// NETWORK MODULE
+//
+// FIX: trimEnd('/') + "/" ensures Retrofit always gets exactly one trailing
+// slash regardless of what is in local.properties, preventing the
+// "Expected URL scheme http or https but no scheme was found" crash.
+// ─────────────────────────────────────────────────────────────────────────
 
-    // Interceptor to inject the Supabase Auth headers automatically
-    private val httpClient = OkHttpClient.Builder().addInterceptor { chain ->
-        val request = chain.request().newBuilder()
-            // Pulling the key securely from BuildConfig generated by local.properties
-            .addHeader("apikey", BuildConfig.SUPABASE_ANON_KEY)
-            .addHeader("Authorization", "Bearer ${BuildConfig.SUPABASE_ANON_KEY}")
+object NetworkModule {
+
+    private val baseUrl: String by lazy {
+        val clean = BuildConfig.SUPABASE_URL.trimEnd('/')
+        "$clean/".also { Log.d("NetworkModule", "Supabase base URL: $it") }
+    }
+
+    private val httpClient: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val original = chain.request()
+                Log.d("NetworkModule", "→ ${original.method} ${original.url}")
+                val request = original.newBuilder()
+                    .addHeader("apikey",        BuildConfig.SUPABASE_ANON_KEY)
+                    .addHeader("Authorization", "Bearer ${BuildConfig.SUPABASE_ANON_KEY}")
+                    .addHeader("Content-Type",  "application/json")
+                    .build()
+                val response = chain.proceed(request)
+                Log.d("NetworkModule", "← ${response.code} ${response.request.url}")
+                response
+            }
             .build()
-        chain.proceed(request)
-    }.build()
+    }
 
     val api: SupabaseApiService by lazy {
         Retrofit.Builder()
-            // Pulling the URL securely from BuildConfig
-            .baseUrl(BuildConfig.SUPABASE_URL)
+            .baseUrl(baseUrl)
             .client(httpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
