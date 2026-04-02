@@ -28,6 +28,7 @@ android {
         buildConfigField("String", "SUPABASE_URL",      "\"${localProperties.getProperty("SUPABASE_URL")}\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProperties.getProperty("SUPABASE_ANON_KEY")}\"")
         buildConfigField("String", "OPENWEATHER_API_KEY", "\"$weatherKey\"")
+        buildConfigField("String", "GEMINI_API_KEY", "\"${localProperties.getProperty("GEMINI_API_KEY")}\"")
     }
 
     buildTypes {
