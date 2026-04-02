@@ -50,6 +50,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import androidx.compose.foundation.clickable
 
 private val BannerStart  = Color(0xFF5B2D8E)   // deep purple (left)
 private val BannerEnd    = Color(0xFF8B3FBF)   // violet (right)
@@ -73,7 +74,8 @@ fun ShiftSafeDashboard(
     workerId: String,
     viewModel: DashboardViewModel,
     navController: NavController,
-    onTriggerAlert: () -> Unit
+    onTriggerAlert: () -> Unit,
+    onPolicyClick: () -> Unit
 ) {
    val context = LocalContext.current
     var isVerifyingLocation by remember { mutableStateOf(false) }
@@ -161,7 +163,7 @@ val locationPermissionLauncher = rememberLauncherForActivityResult(
 
             Spacer(modifier = Modifier.height(24.dp))
             // ── 4. Active Policies ────────────────────────────────────────
-            ActivePoliciesSection()
+            ActivePoliciesSection(onPolicyClick = onPolicyClick)
 
             Spacer(modifier = Modifier.height(32.dp))
         }
@@ -702,7 +704,7 @@ fun AnimatedWeatherBanner(type: EnvironmentType) {
 }
 // ── Active Policies Section ────────────────────────────────────────────────
 @Composable
-fun ActivePoliciesSection() {
+fun ActivePoliciesSection(onPolicyClick: () -> Unit){
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         // Header
         Row(
@@ -732,8 +734,10 @@ fun ActivePoliciesSection() {
             colors = CardDefaults.cardColors(containerColor = Color.White),
             border = BorderStroke(1.dp, Color(0xFFE0E6ED)),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onPolicyClick() } // <-- ADD CLICK LISTENER HERE
+        ){
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

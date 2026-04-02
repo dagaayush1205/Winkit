@@ -37,7 +37,11 @@ data class SupabaseTelemetryRow(
     @SerializedName("os_signature_valid")   val os_signature_valid: Boolean,
     @SerializedName("fraud_reason")         val fraud_reason: String = "PENDING_VERIFICATION"
 )
-
+data class WorkerChargeDto(
+    @SerializedName("worker_id") val worker_id: String? = null,
+    @SerializedName("premium") val premium: Double? = null,
+    @SerializedName("hour_bucket") val hour_bucket: String? = null
+)
 data class SupabaseWorker(
     @SerializedName("worker_id")   val worker_id: String,
     @SerializedName("name")        val name: String?,
@@ -75,7 +79,12 @@ data class SupabaseClaim(
     val status: String?,
     val created_at: String?
 )
-
+data class WeeklyPolicyInsert(
+    @SerializedName("worker_id") val worker_id: String,
+    @SerializedName("premium_paid") val premium_paid: Double,
+    @SerializedName("max_daily_coverage") val max_daily_coverage: Double,
+    @SerializedName("status") val status: String
+)
 // ─────────────────────────────────────────────────────────────────────────
 // API INTERFACE
 // ─────────────────────────────────────────────────────────────────────────
@@ -91,6 +100,22 @@ interface SupabaseApiService {
         @Query("phone")  phone:  String,
         @Query("select") select: String = "worker_id,name,phone,status,trust_score,email,gender,access"
     ): List<SupabaseWorker>
+@Headers("Prefer: return=minimal")
+    @POST("rest/v1/weekly_policies")
+    suspend fun insertWeeklyPolicy(@Body policy: WeeklyPolicyInsert)
+
+    @GET("rest/v1/weekly_policies")
+    suspend fun getActivePolicies(
+        @Query("worker_id") workerId: String,
+        @Query("status") status: String,
+        @Query("select") select: String = "*"
+    ): List<SupabaseWeeklyPolicy> // Re-using your existing data class!
+
+    @GET("rest/v1/worker_charges")
+    suspend fun getWorkerCharges(
+        @Query("worker_id") workerId: String,
+        @Query("select") select: String = "*"
+    ): List<WorkerChargeDto>
 
     @POST("rest/v1/raw_gps_telemetry")
     suspend fun publishTelemetry(@Body telemetry: SupabaseTelemetryRow)

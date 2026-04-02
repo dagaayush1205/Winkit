@@ -20,6 +20,7 @@ import com.example.winkit.ui.screens.onboarding.LoginScreen
 import com.example.winkit.ui.screens.onboarding.ScheduleScreen
 import com.example.winkit.ui.screens.onboarding.SignUpScreen
 import com.example.winkit.ui.screens.wallet.WalletScreen
+import com.example.winkit.ui.screens.dashboard.ActivePolicyScreen
 import com.example.winkit.ui.screens.wallet.WalletViewModel
 
 @Composable
@@ -111,10 +112,16 @@ fun AppNavigation(isLoggedIn: Boolean, sharedPref: SharedPreferences) {
                 workerId = activeWorkerId,
                 viewModel = dashboardViewModel,
                 navController = navController,
-                onTriggerAlert = { navController.navigate("alert") }
+                onTriggerAlert = { navController.navigate("alert") },
+                onPolicyClick = { navController.navigate("active_policy_screen") }
             )
         }
-
+        composable("active_policy_screen") {
+            ActivePolicyScreen(
+                workerId = activeWorkerId,
+                onBack = { navController.popBackStack() } // Goes back to the dashboard
+            )
+        }
         // ── SCREEN 7: WALLET ─────────────────────────────────────────────
         composable("wallet") {
             WalletScreen(

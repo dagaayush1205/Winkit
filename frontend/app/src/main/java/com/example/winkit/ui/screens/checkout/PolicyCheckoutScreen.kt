@@ -29,19 +29,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.util.Log
+import com.example.winkit.data.NetworkModule
+import com.example.winkit.data.WeeklyPolicyInsert // Make sure you import the data class!
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
-import android.util.Log
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import com.example.winkit.data.NetworkModule
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.delay
 
-// Defines the 4 stages of this screen
 enum class CheckoutStep {
     ANALYZING, OFFER, PROCESSING_PAYMENT, SUCCESS
 }
@@ -49,49 +43,46 @@ enum class CheckoutStep {
 @Composable
 fun PolicyCheckoutScreen(workerId: String, onBack: () -> Unit, onPaymentSuccess: () -> Unit) {
     var currentStep by remember { mutableStateOf(CheckoutStep.ANALYZING) }
-
-    // --- ADD THESE MISSING STATE VARIABLES ---
     var weeklyPremium by remember { mutableStateOf("...") }
     var maxPayout by remember { mutableStateOf("...") }
-    // Add a variable to hold the policy ID for later use (like the success screen)
-    var currentPolicyId by remember { mutableStateOf("") }
-
+    
     LaunchedEffect(Unit) {
         try {
-            // Fetch the active policy for our hardcoded demo worker
-            val responseList = NetworkModule.api.getOfferForRider(workerId = "eq.$workerId")
-            
+            val responseList = NetworkModule.api.getWorkerCharges(workerId = "eq.$workerId")
             if (responseList.isNotEmpty()) {
-                val policy = responseList.first()
-                // Update UI state. Ensure we handle potential nulls gracefully if the DB schema changes
-                weeklyPremium = policy.premium_paid?.toInt()?.toString() ?: "132"
-                maxPayout = policy.max_daily_coverage?.toInt()?.toString() ?: "800"
-                currentPolicyId = policy.policy_id ?: ""
-                Log.d("Supabase", "Successfully fetched policy: ${policy.policy_id}")
+                val charge = responseList.first()
+                weeklyPremium = charge.premium?.toInt()?.toString() ?: "132"
+                maxPayout = "800" 
             } else {
-                 Log.w("Supabase", "No active policy found for worker WKT-1001")
-                 // Set some reasonable defaults if no row exists yet during testing
                  weeklyPremium = "132"
                  maxPayout = "800"
             }
-            
-            delay(1500) // Keep a short delay so the user sees the "Analyzing" state briefly
+            delay(1500) 
             currentStep = CheckoutStep.OFFER
-            
         } catch (e: Exception) {
-            Log.e("SupabaseError", "Failed to fetch from DB: ${e.message}")
-            // Fallback UI if the network call fails
+            Log.e("SupabaseError", "Failed to fetch charges: ${e.message}")
             weeklyPremium = "132"
             maxPayout = "800"
             delay(1500)
             currentStep = CheckoutStep.OFFER
         }
     }
-    // Payment Processing Sequence
+
     LaunchedEffect(currentStep) {
         when (currentStep) {
             CheckoutStep.PROCESSING_PAYMENT -> {
                 delay(2000)
+                try {
+                    val newPolicy = WeeklyPolicyInsert(
+                        worker_id = workerId,
+                        premium_paid = weeklyPremium.toDouble(),
+                        max_daily_coverage = maxPayout.toDouble(),
+                        status = "ACTIVE"
+                    )
+                    NetworkModule.api.insertWeeklyPolicy(newPolicy)
+                } catch(e: Exception) {
+                    Log.e("SupabaseError", "Failed to insert active policy: ${e.message}")
+                }
                 currentStep = CheckoutStep.SUCCESS
             }
             CheckoutStep.SUCCESS -> {
@@ -101,32 +92,33 @@ fun PolicyCheckoutScreen(workerId: String, onBack: () -> Unit, onPaymentSuccess:
             else -> { }
         }
     }
+
+    // MAIN UI BOX
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF5F7FA))) {
         
-        // Smoothly transition between the AI Scanner and the Policy Offer
         Crossfade(targetState = currentStep, animationSpec = tween(800), label = "screen_fade") { step ->
             when (step) {
                 CheckoutStep.ANALYZING -> {
                     AiAnalyzingView()
                 }
-              CheckoutStep.OFFER, CheckoutStep.PROCESSING_PAYMENT, CheckoutStep.SUCCESS -> {
-              PolicyOfferView(
-                weeklyPremium = weeklyPremium, // Pass the data!
-                maxPayout = maxPayout,         // Pass the data!
-                onBack = onBack,
-                onSwipeComplete = { currentStep = CheckoutStep.PROCESSING_PAYMENT }
-              )
-            }
+                CheckoutStep.OFFER, CheckoutStep.PROCESSING_PAYMENT, CheckoutStep.SUCCESS -> {
+                    PolicyOfferView(
+                        weeklyPremium = weeklyPremium, 
+                        maxPayout = maxPayout,         
+                        onBack = onBack,
+                        onSwipeComplete = { currentStep = CheckoutStep.PROCESSING_PAYMENT }
+                    )
+                }
             }
         }
 
-        // --- OVERLAY: PAYMENT CONFIRMATION ---
+        // OVERLAY: PAYMENT CONFIRMATION
         if (currentStep == CheckoutStep.PROCESSING_PAYMENT || currentStep == CheckoutStep.SUCCESS) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.6f))
-                    .pointerInput(Unit) {}, // Blocks background clicks
+                    .pointerInput(Unit) {}, 
                 contentAlignment = Alignment.Center
             ) {
                 Surface(
@@ -170,7 +162,6 @@ fun AiAnalyzingView() {
     )
     var phraseIndex by remember { mutableStateOf(0) }
 
-    // Cycle through the text phrases every 700ms
     LaunchedEffect(Unit) {
         while (phraseIndex < loadingPhrases.size - 1) {
             delay(700)
@@ -178,7 +169,6 @@ fun AiAnalyzingView() {
         }
     }
 
-    // Pulsing Radar Animation
     val infiniteTransition = rememberInfiniteTransition(label = "radar")
     val scale by infiniteTransition.animateFloat(
         initialValue = 0.5f,
@@ -199,15 +189,13 @@ fun AiAnalyzingView() {
         verticalArrangement = Arrangement.Center
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.size(200.dp)) {
-            // Expanding Ripple
             Box(
                 modifier = Modifier
                     .size(100.dp)
                     .scale(scale)
                     .alpha(alpha)
-                    .background(Color(0xFF00E5A0), CircleShape) // Neon Green
+                    .background(Color(0xFF00E5A0), CircleShape)
             )
-            // Center Core
             Box(
                 modifier = Modifier
                     .size(64.dp)
@@ -218,7 +206,6 @@ fun AiAnalyzingView() {
         }
 
         Spacer(modifier = Modifier.height(48.dp))
-        
         Text("WinkIT AI Engine", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(12.dp))
         Text(loadingPhrases[phraseIndex], color = Color(0xFF00E5A0), fontSize = 14.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
@@ -231,7 +218,6 @@ fun PolicyOfferView(weeklyPremium: String, maxPayout: String, onBack: () -> Unit
     Box(modifier = Modifier.fillMaxSize()) {
         val gradientBrush = Brush.verticalGradient(listOf(Color(0xFF0A2A59), Color(0xFF006C7A)))
         
-        // Top Background
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -252,7 +238,6 @@ fun PolicyOfferView(weeklyPremium: String, maxPayout: String, onBack: () -> Unit
             }
         }
 
-        // Main Content Overlay
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -261,7 +246,6 @@ fun PolicyOfferView(weeklyPremium: String, maxPayout: String, onBack: () -> Unit
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                // Main Offer Card
                 Surface(
                     shape = RoundedCornerShape(24.dp),
                     color = Color.White,
@@ -269,14 +253,9 @@ fun PolicyOfferView(weeklyPremium: String, maxPayout: String, onBack: () -> Unit
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(24.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Spacer(modifier = Modifier.width(6.dp))
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            // Premium Box
                             Surface(
                                 shape = RoundedCornerShape(16.dp),
                                 color = Color(0xFFF8F9FA),
@@ -289,7 +268,6 @@ fun PolicyOfferView(weeklyPremium: String, maxPayout: String, onBack: () -> Unit
                                     Text("₹$weeklyPremium", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color(0xFF0A192F))                                
                                 }
                             }
-                            // Max Payout Box
                             Surface(
                                 shape = RoundedCornerShape(16.dp),
                                 color = Color(0xFFE8F5E9),
@@ -305,7 +283,6 @@ fun PolicyOfferView(weeklyPremium: String, maxPayout: String, onBack: () -> Unit
                         }
 
                         Spacer(modifier = Modifier.height(24.dp))
-
                         CoverageRow("Covers extreme weather (heavy rain, heatwaves)")
                         Spacer(modifier = Modifier.height(12.dp))
                         CoverageRow("Covers dark store shutdowns & curfews")
@@ -316,7 +293,6 @@ fun PolicyOfferView(weeklyPremium: String, maxPayout: String, onBack: () -> Unit
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Disclaimer Box
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = Color(0xFFE3F2FD),
@@ -336,13 +312,13 @@ fun PolicyOfferView(weeklyPremium: String, maxPayout: String, onBack: () -> Unit
                 }
             }
 
-            // Bottom Slider
             Box(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp), contentAlignment = Alignment.Center) {
                 SwipeToPaySlider(weeklyPremium = weeklyPremium, onSwipeComplete = onSwipeComplete)
             }        
         }
     }
 }
+
 @Composable
 fun CoverageRow(text: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -375,7 +351,7 @@ fun SwipeToPaySlider(weeklyPremium: String, onSwipeComplete: () -> Unit){
     ) {
        Text(
             text = "Swipe to Auto-Pay ₹$weeklyPremium >>>",
-            color = Color.White.copy(alpha = 0.6f),           
+            color = Color.White.copy(alpha = 0.6f),            
             fontWeight = FontWeight.Bold,
             modifier = Modifier.align(Alignment.Center)
         )
