@@ -46,7 +46,8 @@ fun SignUpScreen(
     onNavigateToLogin: () -> Unit
 ) {
     var step by remember { mutableStateOf(SignUpStep.DETAILS) }
-
+    var partnerId by remember { mutableStateOf("") } // <-- NEW
+    var emailError by remember { mutableStateOf(false) } // <-- NEW
     // Form fields
     var name by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
@@ -132,17 +133,31 @@ fun SignUpScreen(
                 when (currentStep) {
                     SignUpStep.DETAILS -> SignUpDetailsView(
                         name = name, onNameChange = { name = it },
+                        partnerId = partnerId, onPartnerIdChange = { partnerId = it }, // <--- ADD THIS COMMA AT THE END!
                         phone = phone, onPhoneChange = { if (it.length <= 10 && it.all(Char::isDigit)) phone = it },
                         email = email, onEmailChange = { email = it },
                         selectedGender = selectedGender, onGenderChange = { selectedGender = it },
                         selectedPlatform = selectedPlatform, onPlatformChange = { selectedPlatform = it },
                         isLoading = isLoading,
                         onContinue = {
-                            if (name.isBlank() || phone.length != 10 || selectedGender.isBlank() || selectedPlatform.isBlank()) {
-                                Toast.makeText(context, "Please fill all required fields", Toast.LENGTH_SHORT).show()
-                            } else {
-                                step = SignUpStep.OTP_VERIFY
+                            // 1. Phone Validation
+                            if (phone.length != 10) {
+                              Toast.makeText(context, "Enter a valid 10-digit phone number", Toast.LENGTH_SHORT).show()
+                              return@SignUpDetailsView
                             }
+                            // 2. Email Validation (if they typed one)
+                            if (email.isNotBlank() && !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                              Toast.makeText(context, "Enter a valid email address", Toast.LENGTH_SHORT).show()
+                              return@SignUpDetailsView
+                            }
+                            // 3. Mandatory Fields Check
+                            if (name.isBlank() || partnerId.isBlank() || selectedGender.isBlank() || selectedPlatform.isBlank()) {
+                              Toast.makeText(context, "Please fill all required fields", Toast.LENGTH_SHORT).show()
+                               return@SignUpDetailsView
+                            }
+    
+                            // If everything is perfect, move to OTP!
+                            step = SignUpStep.OTP_VERIFY
                         },
                         onNavigateToLogin = onNavigateToLogin
                     )
@@ -164,7 +179,7 @@ fun SignUpScreen(
                                     phone = phone,
                                     gender = selectedGender,
                                     email = email,
-                                    platform = selectedPlatform
+                                    partnerId = partnerId 
                                 )
                                 isLoading = false
                                 when (result) {
@@ -184,6 +199,7 @@ fun SignUpScreen(
 @Composable
 private fun SignUpDetailsView(
     name: String, onNameChange: (String) -> Unit,
+    partnerId: String, onPartnerIdChange: (String) -> Unit, 
     phone: String, onPhoneChange: (String) -> Unit,
     email: String, onEmailChange: (String) -> Unit,
     selectedGender: String, onGenderChange: (String) -> Unit,
@@ -215,7 +231,20 @@ private fun SignUpDetailsView(
         )
 
         Spacer(modifier = Modifier.height(14.dp))
-
+        
+        SignUpLabel("DELIVERY PARTNER ID *")
+        Spacer(modifier = Modifier.height(6.dp))
+        OutlinedTextField(
+            value = partnerId,
+            onValueChange = { onPartnerIdChange(it.uppercase()) }, // Force uppercase like ZEP-1001
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            placeholder = { Text("e.g. ZEP-1001 or BKT-8822", color = Color.LightGray) },
+            leadingIcon = { Icon(Icons.Default.Badge, null, tint = Color(0xFF5B2D8E)) },
+            singleLine = true,
+            colors = winkitTextFieldColors()
+        )
+        Spacer(modifier = Modifier.height(14.dp))
         // ── Phone ──────────────────────────────────────────────────────────
         SignUpLabel("PHONE NUMBER *")
         Spacer(modifier = Modifier.height(6.dp))

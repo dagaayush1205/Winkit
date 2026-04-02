@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Polygon, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { cellToBoundary, cellToLatLng } from "h3-js";
 import { supabase } from "../supabase";
+import { cellToBoundary, cellToLatLng, cellToParent } from "h3-js";
 
 const customIcon = L.divIcon({
   className: "custom-pulse-marker",
@@ -39,7 +39,6 @@ function FitBounds({ zones }) {
   return null;
 }
 
-// FIX: Receive onHexClick from parent App.jsx
 export default function RiskMap({ onHexClick }) {
   const [zones, setZones] = useState([]);
   const [events, setEvents] = useState([]);
@@ -92,30 +91,35 @@ export default function RiskMap({ onHexClick }) {
           <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution='&copy; CartoDB' />
           <FitBounds zones={zones} />
 
+          {/* DRAWING THE ACTUAL H3 HEXAGONS */}
           {zones.map((z, i) => {
             if (!z.hex_id) return null;
             try {
-              const boundary = cellToBoundary(z.hex_id);
+              const massiveHexId = cellToParent(z.hex_id, 7); 
+              
+              const boundary = cellToBoundary(massiveHexId);
               const isHighRisk = z.v_zone_score > 0.6;
+              
               return (
                 <Polygon
                   key={i}
                   positions={boundary}
                   pathOptions={{
-                    color: isHighRisk ? "#E11A50" : "#10B981", fillColor: isHighRisk ? "#FF3366" : "#34D399",
-                    fillOpacity: isHighRisk ? 0.6 : 0.2, weight: 2,
+                    color: isHighRisk ? "#FF3366" : "#10B981", // Brighter borders
+                    fillColor: isHighRisk ? "#FF3366" : "#34D399",
+                    fillOpacity: isHighRisk ? 0.5 : 0.2, // Made it slightly more opaque so it pops
+                    weight: 3, // Thicker border for that enterprise look
                   }}
                   eventHandlers={{ 
                     click: () => {
                       setSelected(z);
-                      if (onHexClick) onHexClick(z.hex_id); // Notify App.jsx
+                      if (onHexClick) onHexClick(z.hex_id); 
                     } 
                   }}
                 />
               );
             } catch (error) { return null; }
-          })}
-        </MapContainer>
+          })}        </MapContainer>
       )}
     </div>
   );
