@@ -3,7 +3,7 @@ import sys
 import json
 import requests
 import feedparser
-
+from config import GEMINI_API
 # Adjust path to import from config.py in the root directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(current_dir)

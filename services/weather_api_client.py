@@ -1,9 +1,15 @@
-# services/weather_api_client.py
 import time
 import requests
+import os
+import sys
+current_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.dirname(os.path.dirname(current_dir))
+sys.path.append(root_dir)
 
+# Ensure you add your Supabase keys to config.py
+from config import DEMO_MODE
 class WeatherAPIClient:
-    def __init__(self, api_key: str, lat: float = 12.8259, lon: float = 80.0395, demo_mode: bool = False):
+    def __init__(self, api_key: str, lat: float = 12.8259, lon: float = 80.0395, demo_mode=DEMO_MODE):
         self.api_key = api_key
         self.base_url = "https://api.openweathermap.org/data/2.5"
         self.lat = lat
