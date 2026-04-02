@@ -44,10 +44,10 @@ object SupabaseAuthHelper {
                 name           = name,
                 phone          = phone,
                 aadhar_hash    = "DEMO_HASH_${phone.takeLast(4)}",
-                gender         = gender,           // already capitalised from UI: "Male" etc.
+                gender         = gender,            // "Male", "Female" matches your DB perfectly
                 primary_h3_hex = DEFAULT_HEX,
-                trust_score    = 1,
-                status         = "active",         // ← change to match your rider_status enum exactly
+                trust_score    = 100,               // You might want to start them at 100 instead of 1!
+                status         = "ACTIVE",          // <--- CHANGED THIS TO UPPERCASE
                 access         = true,
                 email          = email.ifBlank { null }
             )
