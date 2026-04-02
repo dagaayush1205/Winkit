@@ -48,7 +48,10 @@ data class SupabaseWeeklyPolicy(
 )
 
 data class WeeklyPolicyInsert(
+    @SerializedName("policy_id")          val policy_id: String,
     @SerializedName("worker_id")          val worker_id: String,
+    @SerializedName("week_start_date")    val week_start_date: String,
+    @SerializedName("week_end_date")      val week_end_date: String,
     @SerializedName("premium_paid")       val premium_paid: Double,
     @SerializedName("max_daily_coverage") val max_daily_coverage: Double,
     @SerializedName("status")             val status: String
@@ -79,7 +82,7 @@ data class SupabaseDailyActivity(
 )
 
 data class SupabaseClaim(
-    @SerializedName("claim_id")  val claim_id: String,
+    @SerializedName("claim_id")   val claim_id: String,
     @SerializedName("payout_amt") val payout_amt: Double?,
     @SerializedName("status")     val status: String?,
     @SerializedName("created_at") val created_at: String?
@@ -106,7 +109,6 @@ interface SupabaseApiService {
         @Query("worker_id") workerId: String = "eq.ZEP-1001"
     ): List<SupabaseWorker>
 
-    // FIX: Added updateWorker method using PATCH for Supabase
     @Headers("Prefer: return=minimal")
     @PATCH("rest/v1/Workers")
     suspend fun updateWorker(
@@ -117,6 +119,11 @@ interface SupabaseApiService {
     @Headers("Prefer: return=minimal")
     @POST("rest/v1/weekly_policies")
     suspend fun insertWeeklyPolicy(@Body policy: WeeklyPolicyInsert)
+
+    // 🔥 FIX: Added raw Map endpoint to pass Dates without data class limitations
+    @Headers("Prefer: return=minimal")
+    @POST("rest/v1/weekly_policies")
+    suspend fun insertFirstPolicyRaw(@Body policy: Map<String, @JvmSuppressWildcards Any>)
 
     @GET("rest/v1/weekly_policies")
     suspend fun getActivePolicies(
@@ -133,7 +140,13 @@ interface SupabaseApiService {
 
     @POST("rest/v1/raw_gps_telemetry")
     suspend fun publishTelemetry(@Body telemetry: SupabaseTelemetryRow)
-
+    
+    @GET("rest/v1/weekly_policies")
+    suspend fun getPoliciesByWorker(
+        @Query("worker_id") workerId: String,
+        @Query("select") select: String = "*"
+    ): List<SupabaseWeeklyPolicy>
+    
     @GET("rest/v1/weekly_policies")
     suspend fun getOfferForRider(
         @Query("worker_id") workerId: String = "eq.ZEP-1001",
