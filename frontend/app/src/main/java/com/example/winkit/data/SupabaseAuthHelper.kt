@@ -1,5 +1,6 @@
 package com.example.winkit.data
 
+
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -22,34 +23,34 @@ object SupabaseAuthHelper {
     suspend fun signUp(
         name: String,
         phone: String,
-        gender: String,       // "Male" | "Female" | "Other"  — matches public.Gender
+        gender: String, // "Male" | "Female" | "Other" — matches public.Gender
         email: String,
-        platform: String      // "Blinkit" or "Zepto"
+        platform: String // "Blinkit" or "Zepto"
     ): AuthResult = withContext(Dispatchers.IO) {
         try {
             val prefix = if (platform == "Zepto") "ZEP" else "BKT"
             val suffix = phone.takeLast(4)
             val workerId = "$prefix-$suffix"
 
-            // ── IMPORTANT: enum value must exactly match your Postgres enums ──
-            // public.rider_status — use "active" (check your enum with the SQL below)
-            // public.Gender       — "Male" / "Female" / "Other"
-            //
-            // To verify, run in Supabase SQL editor:
-            //   SELECT unnest(enum_range(NULL::rider_status));
-            //   SELECT unnest(enum_range(NULL::"Gender"));
+// ── IMPORTANT: enum value must exactly match your Postgres enums ──
+// public.rider_status — use "active" (check your enum with the SQL below)
+// public.Gender — "Male" / "Female" / "Other"
+//
+// To verify, run in Supabase SQL editor:
+// SELECT unnest(enum_range(NULL::rider_status));
+// SELECT unnest(enum_range(NULL::"Gender"));
 
             val newWorker = SupabaseWorkerInsert(
-                worker_id      = workerId,
-                name           = name,
-                phone          = phone,
-                aadhar_hash    = "DEMO_HASH_${phone.takeLast(4)}",
-                gender         = gender,            // "Male", "Female" matches your DB perfectly
+                worker_id = workerId,
+                name = name,
+                phone = phone,
+                aadhar_hash = "DEMO_HASH_${phone.takeLast(4)}",
+                gender = gender, // "Male", "Female" matches your DB perfectly
                 primary_h3_hex = DEFAULT_HEX,
-                trust_score    = 100,               // You might want to start them at 100 instead of 1!
-                status         = "ACTIVE",          // <--- CHANGED THIS TO UPPERCASE
-                access         = true,
-                email          = email.ifBlank { null }
+                trust_score = 100, // You might want to start them at 100 instead of 1!
+                status = "ACTIVE", // <--- CHANGED THIS TO UPPERCASE
+                access = true,
+                email = email.ifBlank { null }
             )
 
             Log.d("SupabaseAuth", "Inserting worker: $workerId | gender=$gender | status=active")
@@ -62,8 +63,8 @@ object SupabaseAuthHelper {
 
             val msg = when {
                 e.message?.contains("409") == true ||
-                e.message?.contains("duplicate") == true ||
-                e.message?.contains("unique") == true ->
+                        e.message?.contains("duplicate") == true ||
+                        e.message?.contains("unique") == true ->
                     "This phone number is already registered. Please login."
 
                 e.message?.contains("violates foreign key") == true ->
@@ -73,7 +74,7 @@ object SupabaseAuthHelper {
                     "Signup failed: enum mismatch — check rider_status/Gender values in Supabase. Error: ${e.message}"
 
                 e.message?.contains("scheme") == true ||
-                e.message?.contains("URL") == true ->
+                        e.message?.contains("URL") == true ->
                     "Network error: bad Supabase URL. Check local.properties. Error: ${e.message}"
 
                 else -> "Sign up failed: ${e.message}"
@@ -92,7 +93,7 @@ object SupabaseAuthHelper {
                 )
             }
             val worker = results.first()
-            // Check suspended — handle both capitalisation variants just in case
+// Check suspended — handle both capitalisation variants just in case
             if (worker.status?.lowercase() == "suspended") {
                 return@withContext AuthResult.Error(
                     "Your account has been suspended. Contact support."
