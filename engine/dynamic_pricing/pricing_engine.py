@@ -1,5 +1,5 @@
 import math
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 import sys
 import os
 
@@ -77,7 +77,10 @@ class DynamicPricingEngine:
         # ==========================================
         # PASS 2: CALCULATE WORKER PREMIUMS
         # ==========================================
-        current_time = datetime.utcnow()
+        # Lock the current time strictly to UTC
+        current_time = datetime.now(timezone.utc)
+        
+        # Create the hour bucket, keeping the UTC timezone attached
         hour_bucket = current_time.replace(minute=0, second=0, microsecond=0)
 
         for worker in workers:
@@ -184,7 +187,10 @@ class DynamicPricingEngine:
             "yesterday_water": round(today_effective_weather, 4)
         }).eq("hex_id", hex_id).execute()
 
-        current_time = datetime.utcnow()
+# Lock the current time strictly to UTC
+        current_time = datetime.now(timezone.utc)
+        
+        # Create the hour bucket, keeping the UTC timezone attached
         hour_bucket = current_time.replace(minute=0, second=0, microsecond=0)
 
         # Log Disruption Event if notable
