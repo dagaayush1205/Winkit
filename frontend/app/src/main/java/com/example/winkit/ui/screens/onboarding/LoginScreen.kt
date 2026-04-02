@@ -1,6 +1,5 @@
 package com.example.winkit.ui.screens.onboarding
 
-import android.app.Activity
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
@@ -15,7 +14,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Lock // Safe default icon!
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,40 +29,44 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.winkit.data.FirebaseAuthHelper
+import com.example.winkit.data.AuthResult
+import com.example.winkit.data.SupabaseAuthHelper
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
-fun LoginScreen(onLoginSuccess: () -> Unit) {
-    // UI States
+fun LoginScreen(
+    onLoginSuccess: (workerId: String) -> Unit,
+    onNavigateToSignUp: () -> Unit = {}
+) {
     var isOtpSent by remember { mutableStateOf(false) }
     var phoneNumber by remember { mutableStateOf("") }
     var otpCode by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
 
-    // Grab the Activity context for Firebase
+    // workerId resolved after Supabase phone lookup
+    var resolvedWorkerId by remember { mutableStateOf("") }
+    var resolvedName by remember { mutableStateOf("") }
+
     val context = LocalContext.current
-    val activity = context as? Activity
-    
-    // Initialize our Firebase Helper
-    val authHelper = remember(activity) { activity?.let { FirebaseAuthHelper(it) } }
+    val coroutineScope = rememberCoroutineScope()
 
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF5F7FA))) {
-        // LAYER 1: The Top Gradient Background
+
+        // ── TOP GRADIENT ──────────────────────────────────────────────────
         val gradientBrush = Brush.verticalGradient(
-            colors = listOf(Color(0xFF0A2A59), Color(0xFF006C7A)) // Dark Blue to Teal
+            colors = listOf(Color(0xFF0A2A59), Color(0xFF006C7A))
         )
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.65f) // Takes up top 65% of screen
+                .fillMaxHeight(0.60f)
                 .clip(RoundedCornerShape(bottomStart = 40.dp, bottomEnd = 40.dp))
                 .background(gradientBrush)
                 .padding(32.dp)
                 .systemBarsPadding()
         ) {
             Column {
-                // Shield/Lock Icon
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = Color.White.copy(alpha = 0.1f),
@@ -71,14 +75,11 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                     Icon(
                         imageVector = Icons.Default.Lock,
                         contentDescription = "Security",
-                        tint = Color(0xFFFFC107), // Gold accent
+                        tint = Color(0xFFFFC107),
                         modifier = Modifier.padding(12.dp)
                     )
                 }
-                
                 Spacer(modifier = Modifier.height(24.dp))
-                
-                // Titles
                 Text(
                     text = "WinkIT\nInstant Payout in a WINK",
                     color = Color.White,
@@ -86,9 +87,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                     fontWeight = FontWeight.ExtraBold,
                     lineHeight = 40.sp
                 )
-                
                 Spacer(modifier = Modifier.height(16.dp))
-                
                 Text(
                     text = "Enter your registered number to get started with your active delivery coverage",
                     color = Color.White.copy(alpha = 0.8f),
@@ -98,68 +97,65 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
             }
         }
 
-        // LAYER 2: The Interactive Card at the bottom
+        // ── BOTTOM CARD ───────────────────────────────────────────────────
         Card(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .padding(16.dp)
-                .padding(bottom = 16.dp), // Extra padding for the bottom of the screen
+                .padding(bottom = 16.dp),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
-            // Smoothly animate between Phone UI and OTP UI
             AnimatedContent(
                 targetState = isOtpSent,
                 transitionSpec = {
                     fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
                 },
                 label = "login_transition"
-            ) { targetState ->
-                if (!targetState) {
-                    PhoneInputView(
+            ) { otpSent ->
+                if (!otpSent) {
+                    LoginPhoneView(
                         phoneNumber = phoneNumber,
-                        onPhoneChange = { if (it.length <= 10 && it.all { char -> char.isDigit() }) phoneNumber = it },
+                        onPhoneChange = { if (it.length <= 10 && it.all(Char::isDigit)) phoneNumber = it },
                         isLoading = isLoading,
                         onSendOtp = {
-                            if (phoneNumber.length == 10 && authHelper != null) {
+                            if (phoneNumber.length == 10) {
                                 isLoading = true
-                                authHelper.sendOtp(
-                                    phoneNumber = phoneNumber,
-                                    onCodeSent = {
-                                        isLoading = false
-                                        isOtpSent = true
-                                    },
-                                    onError = { errorMsg ->
-                                        isLoading = false
-                                        Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
+                                coroutineScope.launch {
+                                    // Look up the phone in Supabase Workers table
+                                    val result = SupabaseAuthHelper.loginWithPhone(phoneNumber)
+                                    isLoading = false
+                                    when (result) {
+                                        is AuthResult.Success -> {
+                                            resolvedWorkerId = result.workerId
+                                            resolvedName = result.name
+                                            isOtpSent = true
+                                        }
+                                        is AuthResult.Error -> {
+                                            Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
+                                        }
                                     }
-                                )
+                                }
                             }
-                        }
+                        },
+                        onNavigateToSignUp = onNavigateToSignUp
                     )
                 } else {
-                    OtpInputView(
+                    LoginOtpView(
                         phoneNumber = phoneNumber,
                         otpCode = otpCode,
-                        onOtpChange = { if (it.length <= 6 && it.all { char -> char.isDigit() }) otpCode = it },
+                        onOtpChange = { if (it.length <= 6 && it.all(Char::isDigit)) otpCode = it },
                         isLoading = isLoading,
-                        onEditPhone = { isOtpSent = false; otpCode = "" }, 
+                        onEditPhone = { isOtpSent = false; otpCode = "" },
                         onVerify = {
-                            if (otpCode.length == 6 && authHelper != null) {
-                                isLoading = true
-                                authHelper.verifyOtp(
-                                    code = otpCode,
-                                    onSuccess = {
-                                        isLoading = false
-                                        onLoginSuccess() 
-                                    },
-                                    onError = { errorMsg ->
-                                        isLoading = false
-                                        Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
-                                    }
-                                )
+                            if (otpCode.length == 6) {
+                                if (SupabaseAuthHelper.verifyOtp(otpCode)) {
+                                    onLoginSuccess(resolvedWorkerId)
+                                } else {
+                                    Toast.makeText(context, "Invalid OTP. Use 123456 for demo.", Toast.LENGTH_SHORT).show()
+                                }
                             }
                         }
                     )
@@ -169,14 +165,21 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
     }
 }
 
+// ── PHONE INPUT VIEW ──────────────────────────────────────────────────────
 @Composable
-fun PhoneInputView(phoneNumber: String, onPhoneChange: (String) -> Unit, isLoading: Boolean, onSendOtp: () -> Unit) {
+private fun LoginPhoneView(
+    phoneNumber: String,
+    onPhoneChange: (String) -> Unit,
+    isLoading: Boolean,
+    onSendOtp: () -> Unit,
+    onNavigateToSignUp: () -> Unit
+) {
     Column(modifier = Modifier.padding(24.dp)) {
+
         Text("PHONE NUMBER", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // Country Code Box
             Surface(
                 shape = RoundedCornerShape(8.dp),
                 border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray),
@@ -186,10 +189,7 @@ fun PhoneInputView(phoneNumber: String, onPhoneChange: (String) -> Unit, isLoadi
                     Text("🇮🇳 +91", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
             }
-            
             Spacer(modifier = Modifier.width(8.dp))
-            
-            // Phone Input
             OutlinedTextField(
                 value = phoneNumber,
                 onValueChange = onPhoneChange,
@@ -204,12 +204,12 @@ fun PhoneInputView(phoneNumber: String, onPhoneChange: (String) -> Unit, isLoadi
                 )
             )
         }
-        
+
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         Button(
             onClick = onSendOtp,
-            enabled = phoneNumber.length == 10 && !isLoading, // Disable if not 10 digits or if loading
+            enabled = phoneNumber.length == 10 && !isLoading,
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
@@ -225,23 +225,57 @@ fun PhoneInputView(phoneNumber: String, onPhoneChange: (String) -> Unit, isLoadi
                 Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(20.dp))
             }
         }
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
+        // ── Sign Up Link ───────────────────────────────────────────────────
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("New here? Sign Up", color = Color.DarkGray, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            Row {
+                Text("New here? ", color = Color.DarkGray, fontSize = 13.sp)
+                Text(
+                    "Sign Up",
+                    color = Color(0xFF0A2A59),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable { onNavigateToSignUp() }
+                )
+            }
             Spacer(modifier = Modifier.height(8.dp))
             Text("Terms of Service  •  Privacy Policy", color = Color.LightGray, fontSize = 10.sp)
         }
     }
 }
 
+// ── OTP INPUT VIEW ────────────────────────────────────────────────────────
 @Composable
-fun OtpInputView(phoneNumber: String, otpCode: String, onOtpChange: (String) -> Unit, isLoading: Boolean, onEditPhone: () -> Unit, onVerify: () -> Unit) {
+private fun LoginOtpView(
+    phoneNumber: String,
+    otpCode: String,
+    onOtpChange: (String) -> Unit,
+    isLoading: Boolean,
+    onEditPhone: () -> Unit,
+    onVerify: () -> Unit
+) {
     Column(modifier = Modifier.padding(24.dp)) {
+
+        // Demo hint
+        Surface(
+            color = Color(0xFFFFF8E1),
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Info, null, tint = Color(0xFFF57F17), modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Demo OTP: 123456", color = Color(0xFF5D4037), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         Text("ENTER OTP", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         OutlinedTextField(
             value = otpCode,
             onValueChange = onOtpChange,
@@ -254,27 +288,31 @@ fun OtpInputView(phoneNumber: String, otpCode: String, onOtpChange: (String) -> 
                 unfocusedBorderColor = Color.LightGray,
                 focusedBorderColor = Color(0xFF0A2A59)
             ),
-            textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontSize = 18.sp, letterSpacing = 8.sp)
+            textStyle = LocalTextStyle.current.copy(
+                textAlign = TextAlign.Center,
+                fontSize = 18.sp,
+                letterSpacing = 8.sp
+            )
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             Text("Sent to +91 $phoneNumber ", color = Color.Gray, fontSize = 12.sp)
             Text(
-                text = "Edit", 
-                color = Color(0xFF0A2A59), 
-                fontSize = 12.sp, 
+                "Edit",
+                color = Color(0xFF0A2A59),
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.clickable { onEditPhone() }
             )
         }
-        
+
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         Button(
             onClick = onVerify,
-            enabled = otpCode.length == 6 && !isLoading, // Firebase requires 6 digits
+            enabled = otpCode.length == 6 && !isLoading,
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
