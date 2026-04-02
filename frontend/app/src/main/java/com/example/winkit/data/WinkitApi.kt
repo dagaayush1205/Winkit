@@ -1,47 +1,17 @@
 package com.example.winkit.data
 
 import android.util.Log
+import com.example.winkit.BuildConfig
+import com.google.gson.annotations.SerializedName
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.GET
-import retrofit2.http.Query
-import com.example.winkit.BuildConfig
-import com.google.gson.annotations.SerializedName
-import retrofit2.http.POST
-import retrofit2.http.Body
-import retrofit2.http.Headers
+import retrofit2.http.*
 
 // ─────────────────────────────────────────────────────────────────────────
 // DATA MODELS
 // ─────────────────────────────────────────────────────────────────────────
 
-data class SupabaseWeeklyPolicy(
-    @SerializedName("policy_id")          val policy_id: String,
-    @SerializedName("created_at")         val created_at: String,
-    @SerializedName("worker_id")          val worker_id: String,
-    @SerializedName("week_start_date")    val week_start_date: String,
-    @SerializedName("week_end_date")      val week_end_date: String,
-    @SerializedName("premium_paid")       val premium_paid: Double?,
-    @SerializedName("max_daily_coverage") val max_daily_coverage: Double?,
-    @SerializedName("status")             val status: String
-)
-
-data class SupabaseTelemetryRow(
-    @SerializedName("worker_id")            val worker_id: String,
-    @SerializedName("latitude")             val latitude: Double,
-    @SerializedName("longitude")            val longitude: Double,
-    @SerializedName("speed_kmh")            val speed_kmh: Float,
-    @SerializedName("is_mock_location")     val is_mock_location: Boolean,
-    @SerializedName("dev_settings_enabled") val dev_settings_enabled: Boolean,
-    @SerializedName("os_signature_valid")   val os_signature_valid: Boolean,
-    @SerializedName("fraud_reason")         val fraud_reason: String = "PENDING_VERIFICATION"
-)
-data class WorkerChargeDto(
-    @SerializedName("worker_id") val worker_id: String? = null,
-    @SerializedName("premium") val premium: Double? = null,
-    @SerializedName("hour_bucket") val hour_bucket: String? = null
-)
 data class SupabaseWorker(
     @SerializedName("worker_id")   val worker_id: String,
     @SerializedName("name")        val name: String?,
@@ -66,6 +36,41 @@ data class SupabaseWorkerInsert(
     @SerializedName("email")          val email: String?
 )
 
+data class SupabaseWeeklyPolicy(
+    @SerializedName("policy_id")          val policy_id: String,
+    @SerializedName("created_at")         val created_at: String,
+    @SerializedName("worker_id")          val worker_id: String,
+    @SerializedName("week_start_date")    val week_start_date: String,
+    @SerializedName("week_end_date")      val week_end_date: String,
+    @SerializedName("premium_paid")       val premium_paid: Double?,
+    @SerializedName("max_daily_coverage") val max_daily_coverage: Double?,
+    @SerializedName("status")             val status: String
+)
+
+data class WeeklyPolicyInsert(
+    @SerializedName("worker_id")          val worker_id: String,
+    @SerializedName("premium_paid")       val premium_paid: Double,
+    @SerializedName("max_daily_coverage") val max_daily_coverage: Double,
+    @SerializedName("status")             val status: String
+)
+
+data class SupabaseTelemetryRow(
+    @SerializedName("worker_id")            val worker_id: String,
+    @SerializedName("latitude")             val latitude: Double,
+    @SerializedName("longitude")            val longitude: Double,
+    @SerializedName("speed_kmh")            val speed_kmh: Float,
+    @SerializedName("is_mock_location")     val is_mock_location: Boolean,
+    @SerializedName("dev_settings_enabled") val dev_settings_enabled: Boolean,
+    @SerializedName("os_signature_valid")   val os_signature_valid: Boolean,
+    @SerializedName("fraud_reason")         val fraud_reason: String = "PENDING_VERIFICATION"
+)
+
+data class WorkerChargeDto(
+    @SerializedName("worker_id")   val worker_id: String? = null,
+    @SerializedName("premium")     val premium: Double? = null,
+    @SerializedName("hour_bucket") val hour_bucket: String? = null
+)
+
 data class SupabaseDailyActivity(
     @SerializedName("log_date")             val log_date: String?,
     @SerializedName("hours_online")         val hours_online: Double?,
@@ -74,17 +79,12 @@ data class SupabaseDailyActivity(
 )
 
 data class SupabaseClaim(
-    val claim_id: String,
-    val payout_amt: Double?,
-    val status: String?,
-    val created_at: String?
+    @SerializedName("claim_id")  val claim_id: String,
+    @SerializedName("payout_amt") val payout_amt: Double?,
+    @SerializedName("status")     val status: String?,
+    @SerializedName("created_at") val created_at: String?
 )
-data class WeeklyPolicyInsert(
-    @SerializedName("worker_id") val worker_id: String,
-    @SerializedName("premium_paid") val premium_paid: Double,
-    @SerializedName("max_daily_coverage") val max_daily_coverage: Double,
-    @SerializedName("status") val status: String
-)
+
 // ─────────────────────────────────────────────────────────────────────────
 // API INTERFACE
 // ─────────────────────────────────────────────────────────────────────────
@@ -97,10 +97,24 @@ interface SupabaseApiService {
 
     @GET("rest/v1/Workers")
     suspend fun getWorkerByPhone(
-        @Query("phone")  phone:  String,
+        @Query("phone") phone: String,
         @Query("select") select: String = "worker_id,name,phone,status,trust_score,email,gender,access"
     ): List<SupabaseWorker>
-@Headers("Prefer: return=minimal")
+
+    @GET("rest/v1/Workers")
+    suspend fun getWorkerProfile(
+        @Query("worker_id") workerId: String = "eq.ZEP-1001"
+    ): List<SupabaseWorker>
+
+    // FIX: Added updateWorker method using PATCH for Supabase
+    @Headers("Prefer: return=minimal")
+    @PATCH("rest/v1/Workers")
+    suspend fun updateWorker(
+        @Query("worker_id") workerId: String,
+        @Body workerUpdate: Map<String, String?>
+    )
+
+    @Headers("Prefer: return=minimal")
     @POST("rest/v1/weekly_policies")
     suspend fun insertWeeklyPolicy(@Body policy: WeeklyPolicyInsert)
 
@@ -109,7 +123,7 @@ interface SupabaseApiService {
         @Query("worker_id") workerId: String,
         @Query("status") status: String,
         @Query("select") select: String = "*"
-    ): List<SupabaseWeeklyPolicy> // Re-using your existing data class!
+    ): List<SupabaseWeeklyPolicy>
 
     @GET("rest/v1/worker_charges")
     suspend fun getWorkerCharges(
@@ -126,11 +140,6 @@ interface SupabaseApiService {
         @Query("status")    status:   String = "eq.ACTIVE"
     ): List<SupabaseWeeklyPolicy>
 
-    @GET("rest/v1/Workers")
-    suspend fun getWorkerProfile(
-        @Query("worker_id") workerId: String = "eq.ZEP-1001"
-    ): List<SupabaseWorker>
-
     @GET("rest/v1/worker_daily_activity")
     suspend fun getWorkerActivity(
         @Query("worker_id") workerId: String = "eq.ZEP-1001",
@@ -146,16 +155,12 @@ interface SupabaseApiService {
 
 // ─────────────────────────────────────────────────────────────────────────
 // NETWORK MODULE
-//
-// FIX: trimEnd('/') + "/" ensures Retrofit always gets exactly one trailing
-// slash regardless of what is in local.properties, preventing the
-// "Expected URL scheme http or https but no scheme was found" crash.
 // ─────────────────────────────────────────────────────────────────────────
 
 object NetworkModule {
 
     private val baseUrl: String by lazy {
-        val clean = BuildConfig.SUPABASE_URL.trimEnd('/')
+        val clean = BuildConfig.SUPABASE_URL.trim().trimEnd('/')
         "$clean/".also { Log.d("NetworkModule", "Supabase base URL: $it") }
     }
 
@@ -163,14 +168,15 @@ object NetworkModule {
         OkHttpClient.Builder()
             .addInterceptor { chain ->
                 val original = chain.request()
-                Log.d("NetworkModule", "→ ${original.method} ${original.url}")
                 val request = original.newBuilder()
-                    .addHeader("apikey",        BuildConfig.SUPABASE_ANON_KEY)
+                    .addHeader("apikey", BuildConfig.SUPABASE_ANON_KEY)
                     .addHeader("Authorization", "Bearer ${BuildConfig.SUPABASE_ANON_KEY}")
-                    .addHeader("Content-Type",  "application/json")
+                    .addHeader("Content-Type", "application/json")
                     .build()
+
+                Log.d("NetworkModule", "→ ${request.method} ${request.url}")
                 val response = chain.proceed(request)
-                Log.d("NetworkModule", "← ${response.code} ${response.request.url}")
+                Log.d("NetworkModule", "← ${response.code} ${request.url}")
                 response
             }
             .build()
