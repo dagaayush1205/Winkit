@@ -68,6 +68,14 @@ data class SupabaseTelemetryRow(
     @SerializedName("fraud_reason")         val fraud_reason: String = "PENDING_VERIFICATION"
 )
 
+data class RelocationInsert(
+    @SerializedName("worker_id")    val worker_id: String,
+    @SerializedName("from_zone")    val from_zone: String,
+    @SerializedName("to_zone")      val to_zone: String,
+    @SerializedName("bonus_amount") val bonus_amount: Int,
+    @SerializedName("status")       val status: String = "ACCEPTED"
+)
+
 data class WorkerChargeDto(
     @SerializedName("worker_id")   val worker_id: String? = null,
     @SerializedName("premium")     val premium: Double? = null,
@@ -132,6 +140,13 @@ interface SupabaseApiService {
         @Query("worker_id") workerId: String,
         @Body workerUpdate: Map<String, String?>
     )
+
+    @Headers("Prefer: return=minimal")
+    @POST("rest/v1/relocation_events")
+    suspend fun insertRelocationEvent(@Body relocation: RelocationInsert)
+
+    @GET("rest/v1/h3_zone_states")
+    suspend fun getZoneData(@Query("select") select: String = "hex_id,v_zone_score,yesterday_water"): List<Map<String, Any>>
 
     @Headers("Prefer: return=minimal")
     @POST("rest/v1/weekly_policies")

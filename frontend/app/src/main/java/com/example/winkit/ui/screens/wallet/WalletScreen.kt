@@ -22,16 +22,36 @@ import androidx.navigation.NavController
 import com.example.winkit.ui.components.ShiftSafeBottomNav
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.foundation.BorderStroke
-
+import androidx.compose.ui.platform.LocalContext
 @Composable
 fun WalletScreen(
-    workerId: String, // 🔥 DYNAMIC ID ADDED HERE
+    workerId: String, 
     navController: NavController, 
     viewModel: WalletViewModel
 ) {
-    // 🔥 THIS IS THE MAGIC: Fetch data the moment the screen loads!
+    val context = LocalContext.current
+    var initialLoadDone by remember { mutableStateOf(false) }
+    var previousBalance by remember { mutableStateOf(0) }
+
+    // 🔥 1. THIS IS THE MAGIC: Fetch data the moment the screen loads!
     LaunchedEffect(workerId) {
         viewModel.fetchRealLedgerData(workerId)
+    }
+
+    // 🔥 2. SMART WALLET WATCHER: Automatically fires notification when money is added!
+    LaunchedEffect(viewModel.walletBalance) {
+        if (!initialLoadDone && viewModel.walletBalance != 0) {
+            // Initial Load: Don't fire a notification when fetching data from the DB for the first time
+            initialLoadDone = true 
+            previousBalance = viewModel.walletBalance
+        } else if (initialLoadDone && viewModel.walletBalance > previousBalance) {
+            // New Money Added! Calculate how much and fire the notification
+            val addedAmount = viewModel.walletBalance - previousBalance
+            com.example.winkit.utils.NotificationHelper.showPayoutNotification(context, addedAmount)
+            
+            // Update the tracker
+            previousBalance = viewModel.walletBalance
+        }
     }
 
     Scaffold(
@@ -63,11 +83,14 @@ fun WalletScreen(
                     LiveClaimTracker(currentStep = viewModel.trackerStep)
                 }
             }
-if (viewModel.pendingManualClaims > 0) {
+            
+            // Show pending manual claims banner
+            if (viewModel.pendingManualClaims > 0) {
                 item {
                     PendingReviewBanner(count = viewModel.pendingManualClaims)
                 }
             }
+            
             item {
                 Text("Ledger History", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1A1A), modifier = Modifier.padding(top = 8.dp))
             }
@@ -79,8 +102,7 @@ if (viewModel.pendingManualClaims > 0) {
             item { Spacer(modifier = Modifier.height(80.dp)) }
         }
     }
-}
-@Composable
+}@Composable
 fun WalletBalanceCard(balance: Int, earnings: Int, payouts: Int) {
     Surface(
         shape = RoundedCornerShape(24.dp),
