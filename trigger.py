@@ -1,7 +1,7 @@
 import os
 import sys
 from datetime import datetime, timedelta, timezone
-# Adjust path to import from root directory
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = current_dir if "config.py" in os.listdir(current_dir) else os.path.dirname(current_dir)
 sys.path.append(root_dir)
@@ -26,10 +26,7 @@ class ClaimTriggerWorker:
 
     def fetch_recent_disruptions(self):
         """Fetches disruption events logged in the last 60 minutes using explicit UTC."""
-        # 1. Get the current time, explicitly locked to UTC
         now_utc = datetime.now(timezone.utc)
-        
-        # 2. Subtract 1 hour and format it with the timezone flag (+00:00)
         one_hour_ago = (now_utc - timedelta(hours=1)).isoformat()
         
         response = self.supabase.table("disruption_events") \
@@ -62,12 +59,29 @@ class ClaimTriggerWorker:
         return None
 
     def check_claim_exists(self, claim_id: str) -> bool:
-        """Prevents double-paying a worker for the same event."""
+        """Prevents double-paying a worker for the same hourly event."""
         response = self.supabase.table("claims_and_payouts") \
             .select("claim_id") \
             .eq("claim_id", claim_id) \
             .execute()
         return len(response.data) > 0
+
+    def get_total_paid_today(self, worker_id: str) -> float:
+        """Calculates how much the worker has already been paid today (UTC)."""
+        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+        
+        response = self.supabase.table("claims_and_payouts") \
+            .select("payout_amt") \
+            .eq("worker_id", worker_id) \
+            .gte("created_at", today_start) \
+            .execute()
+            
+        if not response.data:
+            return 0.0
+            
+        # Sum up all payouts for today
+        total_paid = sum(float(claim.get("payout_amt", 0.0)) for claim in response.data)
+        return total_paid
 
     def process_triggers(self):
         """The main chronological sweep."""
@@ -99,29 +113,43 @@ class ClaimTriggerWorker:
             for policy in active_policies:
                 worker_id = policy['worker_id']
                 policy_id = policy['policy_id']
-                payout_amt = policy.get('max_daily_coverage', 500.0)
+                
+                # 1. Fetch their daily max and calculate their hourly drip rate
+                daily_max = float(policy.get('max_daily_coverage', 500.0))
+                # Default to 10% of their daily max per hour (e.g., ₹50/hr for a ₹500 policy)
+                hourly_payout = float(policy.get('hourly_rate', daily_max / 10.0))
 
                 # Check if the worker is actually in the danger zone
                 worker_hex = self.get_worker_latest_hex(worker_id)
                 
                 if worker_hex == danger_hex:
+                    
+                    # 2. Prevent over-paying if they hit their daily cap
+                    today_paid = self.get_total_paid_today(worker_id)
+                    
+                    if today_paid >= daily_max:
+                        print(f"   {Colors.WARNING}⏭️  {worker_id} maxed out daily coverage (₹{daily_max}). Skipping.{Colors.ENDC}")
+                        continue
+                        
+                    # 3. Calculate exact payout (Handle the remainder if they are close to the cap)
+                    actual_payout = min(hourly_payout, daily_max - today_paid)
+                    
                     # Generate an Idempotent Claim ID (e.g., CLM-ZEP1001-EVT1234)
-                    # We take the last 8 chars of the event_id to keep it clean
                     claim_id = f"CLM-{worker_id}-{event_id[-8:]}"
                     
                     if self.check_claim_exists(claim_id):
-                        print(f"   {Colors.BLUE}⏭️  Claim already exists for {worker_id}. Skipping.{Colors.ENDC}")
+                        print(f"   {Colors.BLUE}⏭️  Claim already exists for {worker_id} this hour. Skipping.{Colors.ENDC}")
                         continue
                         
-                    print(f"   {Colors.WARNING}🚨 HIT! {worker_id} is in the danger zone. Generating ESCROW claim...{Colors.ENDC}")
+                    print(f"   {Colors.WARNING}🚨 HIT! {worker_id} in danger zone. Drip-feeding ₹{actual_payout:.2f}...{Colors.ENDC}")
                     
-                    # 💥 THE SMART CONTRACT EXECUTION 💥
+                    # 💥 THE HOURLY DRIP-FEED SMART CONTRACT EXECUTION 💥
                     self.supabase.table("claims_and_payouts").insert({
                         "claim_id": claim_id,
                         "worker_id": worker_id,
                         "policy_id": policy_id,
                         "event_id": event_id,
-                        "payout_amt": payout_amt,
+                        "payout_amt": round(actual_payout, 2), # Insert the fractional amount
                         "status": "ESCROW",
                         "fraud_flags_triggered": 0
                     }).execute()
