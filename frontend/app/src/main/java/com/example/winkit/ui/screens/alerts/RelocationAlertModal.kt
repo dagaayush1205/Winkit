@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
+import com.example.winkit.utils.tr
 
 @Composable
 fun RelocationAlertModal(onAccept: () -> Unit, onDismiss: () -> Unit) {
@@ -59,8 +60,8 @@ fun RelocationAlertModal(onAccept: () -> Unit, onDismiss: () -> Unit) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                         Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFE53935), modifier = Modifier.size(40.dp))
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("ZONE FLOODING DETECTED", color = Color(0xFFD32F2F), fontSize = 16.sp, fontWeight = FontWeight.Black)
-                        Text("Deliveries paused in Velachery.", color = Color(0xFFD32F2F).copy(alpha = 0.8f), fontSize = 12.sp)
+                        Text(tr("ZONE FLOODING DETECTED"), color = Color(0xFFD32F2F), fontSize = 16.sp, fontWeight = FontWeight.Black)
+                        Text(tr("Deliveries paused in Velachery."), color = Color(0xFFD32F2F).copy(alpha = 0.8f), fontSize = 12.sp)
                     }
                 }
 
@@ -128,7 +129,7 @@ fun RelocationAlertModal(onAccept: () -> Unit, onDismiss: () -> Unit) {
 
                 // --- 3. PAYOUT & RELOCATION DETAILS ---
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text("RELOCATION OFFER", color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text(tr("RELOCATION OFFER"), color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -137,8 +138,8 @@ fun RelocationAlertModal(onAccept: () -> Unit, onDismiss: () -> Unit) {
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text("₹150 Surge Bonus", color = Color(0xFF1A1A2E), fontWeight = FontWeight.Black, fontSize = 16.sp)
-                            Text("Guaranteed minimum 5 orders", color = Color.Gray, fontSize = 12.sp)
+                            Text(tr("₹150 Surge Bonus"), color = Color(0xFF1A1A2E), fontWeight = FontWeight.Black, fontSize = 16.sp)
+                            Text(tr("Guaranteed minimum 5 orders"), color = Color.Gray, fontSize = 12.sp)
                         }
                     }
 
@@ -150,8 +151,8 @@ fun RelocationAlertModal(onAccept: () -> Unit, onDismiss: () -> Unit) {
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text("Relocate to Adyar Hub", color = Color(0xFF1A1A2E), fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            Text("3.2 km away • ~10 mins", color = Color.Gray, fontSize = 12.sp)
+                            Text(tr("Relocate to Adyar Hub"), color = Color(0xFF1A1A2E), fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text(tr("3.2 km away • ~10 mins"), color = Color.Gray, fontSize = 12.sp)
                         }
                     }
                 }
@@ -164,14 +165,14 @@ fun RelocationAlertModal(onAccept: () -> Unit, onDismiss: () -> Unit) {
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth().height(50.dp)
                     ) {
-                        Text("Accept Route & Bonus", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text(tr("Accept Route & Bonus"), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     TextButton(
                         onClick = onDismiss,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Stay offline in current zone", color = Color.Gray, fontSize = 13.sp)
+                        Text(tr("Stay offline in current zone"), color = Color.Gray, fontSize = 13.sp)
                     }
                 }
             }
