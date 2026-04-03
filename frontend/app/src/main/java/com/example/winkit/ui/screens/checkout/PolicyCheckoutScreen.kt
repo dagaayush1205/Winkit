@@ -37,6 +37,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import com.example.winkit.utils.tr
 import java.util.Locale
 
 enum class CheckoutStep {
@@ -145,15 +146,15 @@ fun PolicyCheckoutScreen(workerId: String, onBack: () -> Unit, onPaymentSuccess:
                         if (currentStep == CheckoutStep.PROCESSING_PAYMENT) {
                             CircularProgressIndicator(color = Color(0xFF006C7A), modifier = Modifier.size(64.dp), strokeWidth = 6.dp)
                             Spacer(modifier = Modifier.height(24.dp))
-                            Text("Setting up Auto-Pay...", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0A192F))
+                            Text(tr("Setting up Auto-Pay..."), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0A192F))
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("Authorizing with UPI", fontSize = 14.sp, color = Color.Gray)
+                            Text(tr("Authorizing with UPI"), fontSize = 14.sp, color = Color.Gray)
                         } else {
                             Icon(Icons.Default.CheckCircle, contentDescription = "Success", tint = Color(0xFF4CAF50), modifier = Modifier.size(80.dp))
                             Spacer(modifier = Modifier.height(24.dp))
-                            Text("Auto-Pay Enabled!", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF4CAF50))
+                            Text(tr("Auto-Pay Enabled!"), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF4CAF50))
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("Your coverage is now active.", fontSize = 14.sp, color = Color.Gray)
+                            Text(tr("Your coverage is now active."), fontSize = 14.sp, color = Color.Gray)
 
                             // 🔥 FALLBACK BUTTON ADDED HERE 🔥
                             Spacer(modifier = Modifier.height(24.dp))
@@ -163,7 +164,7 @@ fun PolicyCheckoutScreen(workerId: String, onBack: () -> Unit, onPaymentSuccess:
                                 modifier = Modifier.fillMaxWidth().height(50.dp),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
-                                Text("Go to Dashboard", fontWeight = FontWeight.Bold, color = Color.White)
+                                Text(tr("Go to Dashboard"), fontWeight = FontWeight.Bold, color = Color.White)
                             }
                         }
                     }
@@ -255,9 +256,9 @@ fun PolicyOfferView(weeklyPremium: String, maxPayout: String, onBack: () -> Unit
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Your Policy Offer", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                Text(tr("Your Policy Offer"), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Based on your risk profile, here is your weekly coverage plan.", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
+                Text(tr("Based on your risk profile, here is your weekly coverage plan."), color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
             }
         }
 
@@ -286,7 +287,7 @@ fun PolicyOfferView(weeklyPremium: String, maxPayout: String, onBack: () -> Unit
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Column(modifier = Modifier.padding(16.dp)) {
-                                    Text("WEEKLY PREMIUM", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                                    Text(tr("WEEKLY PREMIUM"), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text("₹$weeklyPremium", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color(0xFF0A192F))
                                 }
@@ -297,10 +298,10 @@ fun PolicyOfferView(weeklyPremium: String, maxPayout: String, onBack: () -> Unit
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Column(modifier = Modifier.padding(16.dp)) {
-                                    Text("MAX PAYOUT", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
+                                    Text(tr("MAX PAYOUT"), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text("₹$maxPayout", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color(0xFF4CAF50))
-                                    Text("per incident", fontSize = 12.sp, color = Color(0xFF4CAF50))
+                                    Text(tr("per incident"), fontSize = 12.sp, color = Color(0xFF4CAF50))
                                 }
                             }
                         }
@@ -326,7 +327,7 @@ fun PolicyOfferView(weeklyPremium: String, maxPayout: String, onBack: () -> Unit
                         Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFF1976D2), modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "This policy covers income loss only. It does not cover vehicle damage or medical expenses.",
+                            text = tr("This policy covers income loss only. It does not cover vehicle damage or medical expenses."),
                             color = Color(0xFF0D47A1),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium
@@ -373,7 +374,7 @@ fun SwipeToPaySlider(weeklyPremium: String, onSwipeComplete: () -> Unit){
         contentAlignment = Alignment.CenterStart
     ) {
         Text(
-            text = "Swipe to Auto-Pay ₹$weeklyPremium >>>",
+            text = tr("Swipe to Auto-Pay")+ "₹$weeklyPremium >>>",
             color = Color.White.copy(alpha = 0.6f),
             fontWeight = FontWeight.Bold,
             modifier = Modifier.align(Alignment.Center)
