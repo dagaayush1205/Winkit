@@ -20,7 +20,10 @@ export default function RiskMap({ onHexClick }) {
   };
 
   const fetchData = async () => {
-    if (!supabase) return;
+    if (!supabase) {
+      setIsLoading(false);
+      return;
+    }
     try {
       // 1. Fetch Zone Infrastructure Risk
       const { data: zones } = await supabase.from("h3_zone_states").select("*");
@@ -58,6 +61,8 @@ export default function RiskMap({ onHexClick }) {
   useEffect(() => {
     fetchData();
     
+    if (!supabase) return;
+
     // Listen for real-time updates when the Python Pricing Engine updates a zone
     // or when a new GPS ping hits the telemetry table!
     const channel = supabase.channel('map-updates')

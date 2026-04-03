@@ -96,7 +96,7 @@ fun IntegrationScreen(onBack: () -> Unit, onNext: (String) -> Unit) {
                 onValueChange = { partnerId = it; isVerified = false },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                placeholder = { Text("e.g. ${if (selectedPlatform == "Zepto") "ZEP" else "BLK"}-8849") },
+                placeholder = { Text("e.g. ${if (selectedPlatform == "Zepto") "ZEP" else "BKT"}-8849") },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Color(0xFF006C7A),
                     unfocusedBorderColor = if (isVerified) Color(0xFF006C7A) else Color.LightGray
@@ -112,7 +112,7 @@ fun IntegrationScreen(onBack: () -> Unit, onNext: (String) -> Unit) {
                         Button(
                             onClick = {
                                 // "Real" Verification Logic
-                                if (partnerId.startsWith(if (selectedPlatform == "Zepto") "ZEP" else "BLK", ignoreCase = true)) {
+                                if (partnerId.startsWith(if (selectedPlatform == "Zepto") "ZEP" else "BKT", ignoreCase = true)) {
                                     coroutineScope.launch {
                                         isVerifying = true
                                         delay(1500) // Fake API Call

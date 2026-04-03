@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.winkit.ui.components.ShiftSafeBottomNav
+import androidx.compose.material.icons.filled.HourglassEmpty
+import androidx.compose.foundation.BorderStroke
 
 @Composable
 fun WalletScreen(
@@ -61,7 +63,11 @@ fun WalletScreen(
                     LiveClaimTracker(currentStep = viewModel.trackerStep)
                 }
             }
-
+if (viewModel.pendingManualClaims > 0) {
+                item {
+                    PendingReviewBanner(count = viewModel.pendingManualClaims)
+                }
+            }
             item {
                 Text("Ledger History", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1A1A), modifier = Modifier.padding(top = 8.dp))
             }
@@ -269,6 +275,36 @@ fun TransactionRow(tx: Transaction) {
                 fontWeight = FontWeight.Black,
                 color = if (tx.isPositive) Color(0xFF00C853) else Color(0xFF424242)
             )
+        }
+    }
+}
+@Composable
+fun PendingReviewBanner(count: Int) {
+    Surface(
+        color = Color(0xFFFFF8E1), // Light Amber/Warning Background
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color(0xFFFFE082)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp), 
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.HourglassEmpty, contentDescription = null, tint = Color(0xFFF57C00))
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = "$count Pending Manual Review${if (count > 1) "s" else ""}", 
+                    fontWeight = FontWeight.Bold, 
+                    color = Color(0xFFE65100), 
+                    fontSize = 14.sp
+                )
+                Text(
+                    text = "Your hazard report is being verified by our team. Payouts process within 24hrs.", 
+                    color = Color(0xFFE65100).copy(alpha = 0.8f), 
+                    fontSize = 12.sp
+                )
+            }
         }
     }
 }

@@ -36,7 +36,7 @@ data class Transaction(
 
 // ── VIEW MODEL ─────────────────────────────────────────────────────────────
 class WalletViewModel : ViewModel() {
-    
+
     var walletBalance by mutableStateOf(0)
         private set
     var totalEarnings by mutableStateOf(0)
@@ -49,6 +49,9 @@ class WalletViewModel : ViewModel() {
 
     val transactions = mutableStateListOf<Transaction>()
 
+    var pendingManualClaims by mutableStateOf(0)
+        private set
+
     private fun getCurrentTime(): String {
         return SimpleDateFormat("dd MMM 'at' hh:mm a", Locale.getDefault()).format(Date())
     }
@@ -57,15 +60,18 @@ class WalletViewModel : ViewModel() {
     fun fetchRealLedgerData(workerId: String) {
         viewModelScope.launch {
             try {
-                // Fetch ONLY this specific worker's data!
                 val realClaims = NetworkModule.api.getWorkerClaims(workerId = "eq.$workerId")
                 val realActivity = NetworkModule.api.getWorkerActivity(workerId = "eq.$workerId")
-                Log.d("Wallet", "SUCCESS: Loaded ${realClaims.size} claims and ${realActivity.size} shifts for $workerId!")
+                val realPolicies = NetworkModule.api.getPoliciesByWorker(workerId = "eq.$workerId")
+                val pendingClaims = NetworkModule.api.getPendingManualClaims(workerId = "eq.$workerId")
+
+                pendingManualClaims = pendingClaims.size
+                Log.d("Wallet", "SUCCESS: Loaded ${realClaims.size} claims, ${pendingClaims.size} pending for $workerId!")
 
                 var calculatedBalance = 0
                 var calcEarnings = 0
                 var calcPayouts = 0
-                
+
                 transactions.clear()
 
                 realActivity.forEach { activity ->
@@ -93,14 +99,21 @@ class WalletViewModel : ViewModel() {
                         )
                     )
                 }
-                
-                calculatedBalance -= 49
-                transactions.add(
-                    Transaction(
-                        title = "Weekly Premium", type = "PREMIUM DEDUCTION", amount = 49, isPositive = false, timestamp = "28 Mar",
-                        icon = Icons.Default.Security, iconBgColor = Color(0xFFFFEBEE), iconTintColor = Color(0xFFF44336)
+
+                realPolicies.forEach { policy ->
+                    val premiumAmt = policy.premium_paid?.toInt() ?: 0
+                    calculatedBalance -= premiumAmt
+                    transactions.add(
+                        Transaction(
+                            title = "Weekly Premium",
+                            type = "PREMIUM DEDUCTION",
+                            amount = premiumAmt,
+                            isPositive = false,
+                            timestamp = policy.week_start_date ?: getCurrentTime(),
+                            icon = Icons.Default.Security, iconBgColor = Color(0xFFFFEBEE), iconTintColor = Color(0xFFF44336)
+                        )
                     )
-                )
+                }
 
                 walletBalance = calculatedBalance
                 totalEarnings = calcEarnings
@@ -114,35 +127,34 @@ class WalletViewModel : ViewModel() {
 
     // --- 2. THE LIVE DEMO SYNC (DYNAMIC WORKER ID) ---
     fun syncLedgerAndCheckClaims(workerId: String) {
-        if (trackerStep != -1) return 
+        if (trackerStep != -1) return
 
         viewModelScope.launch {
-            trackerStep = 0; delay(1200) 
-            trackerStep = 1; delay(1200) 
-            trackerStep = 2; delay(1200) 
-            trackerStep = 3; delay(1200) 
-            trackerStep = 4 
-            
+            trackerStep = 0; delay(1200)
+            trackerStep = 1; delay(1200)
+            trackerStep = 2; delay(1200)
+            trackerStep = 3; delay(1200)
+            trackerStep = 4
+
             try {
-                // Fetch the absolute newest claims for THIS specific worker
                 val latestClaims = NetworkModule.api.getWorkerClaims(workerId = "eq.$workerId", order = "created_at.desc")
                 val newestClaim = latestClaims.firstOrNull()
-               Log.d("Wallet", "SUCCESS: Live Sync caught a payout of ₹${newestClaim?.payout_amt} with status: ${newestClaim?.status}")
+                Log.d("Wallet", "SUCCESS: Live Sync caught a payout of ₹${newestClaim?.payout_amt} with status: ${newestClaim?.status}")
 
                 if (newestClaim != null) {
                     val realPayoutAmt = newestClaim.payout_amt?.toInt() ?: 0
-                    
+
                     walletBalance += realPayoutAmt
                     totalPayouts += realPayoutAmt
-                    
+
                     transactions.add(0, Transaction(
-                        title = "Automated Flood Relief (Live)", 
-                        type = "PARAMETRIC PAYOUT", 
-                        amount = realPayoutAmt, 
-                        isPositive = true, 
-                        timestamp = getCurrentTime(), 
-                        icon = Icons.Default.WaterDrop, 
-                        iconBgColor = Color(0xFFE3F2FD), 
+                        title = "Automated Flood Relief (Live)",
+                        type = "PARAMETRIC PAYOUT",
+                        amount = realPayoutAmt,
+                        isPositive = true,
+                        timestamp = getCurrentTime(),
+                        icon = Icons.Default.WaterDrop,
+                        iconBgColor = Color(0xFFE3F2FD),
                         iconTintColor = Color(0xFF2196F3)
                     ))
                 }
@@ -150,8 +162,8 @@ class WalletViewModel : ViewModel() {
                 Log.e("Wallet", "Failed to fetch live claim: ${e.message}")
             }
 
-            delay(1500) 
-            trackerStep = -1 
+            delay(1500)
+            trackerStep = -1
         }
     }
 }
