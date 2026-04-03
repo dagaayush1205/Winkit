@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Info
@@ -43,7 +44,7 @@ fun LoginScreen(
     var phoneNumber by remember { mutableStateOf("") }
     var otpCode by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
-
+    var showTermsDialog by remember { mutableStateOf(false) }
     // workerId resolved after Supabase phone lookup
     var resolvedWorkerId by remember { mutableStateOf("") }
     var resolvedName by remember { mutableStateOf("") }
@@ -140,7 +141,8 @@ fun LoginScreen(
                                 }
                             }
                         },
-                        onNavigateToSignUp = onNavigateToSignUp
+                        onNavigateToSignUp = onNavigateToSignUp,
+                        onTermsClick = { showTermsDialog = true }
                     )
                 } else {
                     LoginOtpView(
@@ -152,6 +154,7 @@ fun LoginScreen(
                         onVerify = {
                             if (otpCode.length == 6) {
                                 if (SupabaseAuthHelper.verifyOtp(otpCode)) {
+                                    com.example.winkit.utils.AuthManager.saveWorkerId(context, resolvedWorkerId) 
                                     onLoginSuccess(resolvedWorkerId)
                                 } else {
                                     Toast.makeText(context, "Invalid OTP. Use 123456 for demo.", Toast.LENGTH_SHORT).show()
@@ -161,6 +164,9 @@ fun LoginScreen(
                     )
                 }
             }
+        }
+        if (showTermsDialog) {
+            TermsDialog(onAccept = { showTermsDialog = false })
         }
     }
 }
@@ -172,7 +178,8 @@ private fun LoginPhoneView(
     onPhoneChange: (String) -> Unit,
     isLoading: Boolean,
     onSendOtp: () -> Unit,
-    onNavigateToSignUp: () -> Unit
+    onNavigateToSignUp: () -> Unit,
+    onTermsClick: () -> Unit
 ) {
     Column(modifier = Modifier.padding(24.dp)) {
 
@@ -241,7 +248,14 @@ private fun LoginPhoneView(
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text("Terms of Service  •  Privacy Policy", color = Color.LightGray, fontSize = 10.sp)
+
+          Text(
+                text = "Terms of Service  •  Privacy Policy", 
+                color = Color(0xFF0A2A59), // Made it blue so it looks clickable
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.clickable { onTermsClick() }
+            )
         }
     }
 }
@@ -329,4 +343,42 @@ private fun LoginOtpView(
             }
         }
     }
+}
+
+@Composable
+fun TermsDialog(onAccept: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onAccept,
+        containerColor = Color.White,
+        title = { 
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFF0A2A59))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Terms & Privacy Policy", fontWeight = FontWeight.Bold, color = Color(0xFF1A1A2E), fontSize = 18.sp)
+            }
+        },
+        text = {
+            Column(modifier = Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+                Text("1. User Agreement", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("By logging in, you agree to WinkIT's platform terms, including GPS telemetry tracking for parametric insurance verification.", fontSize = 12.sp, color = Color.Gray)
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text("2. Data Privacy", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("We securely store your phone number and location data exclusively for processing automated risk payouts and fraud prevention.", fontSize = 12.sp, color = Color.Gray)
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text("3. Financial Consent", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("You authorize WinkIT to process premium deductions and route automated claim payouts directly to your linked wallet.", fontSize = 12.sp, color = Color.Gray)
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onAccept,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0A2A59)),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("I Accept & Continue", fontWeight = FontWeight.Bold)
+            }
+        }
+    )
 }

@@ -66,6 +66,17 @@ fun ShiftSafeDashboard(
     onPolicyClick: () -> Unit
 ) {
     val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        // Wait exactly 12 seconds after the dashboard loads
+        delay(12000) 
+        
+        // Fire the engagement notification!
+        com.example.winkit.utils.NotificationHelper.showPromoNotification(
+            context = context, 
+            title = "👋 Long time no see!", 
+            message = "Surge pricing is active in your area. Jump online now to earn!"
+        )
+    }
     val coroutineScope = rememberCoroutineScope()
     var hasPolicy by remember { mutableStateOf<Boolean?>(null) }
     var walletBalance by remember { mutableStateOf(0.0) }
@@ -147,7 +158,6 @@ LaunchedEffect(workerId) {
         floatingActionButtonPosition = FabPosition.End
     ) { innerPadding ->
 
-        // 🔥 FIXED: Wrap everything in a Box so the Chatbot sheet floats on top,
         // while the main content stays inside the scrollable Column.
         Box(modifier = Modifier.fillMaxSize()) {
 
@@ -171,7 +181,6 @@ LaunchedEffect(workerId) {
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // 🔥 FIXED: The 'when' block is now SAFELY INSIDE the Column
                 when (hasPolicy) {
                     null -> {
                         Box(
@@ -767,7 +776,7 @@ fun ManualClaimDialog(
 ) {
     var description by remember { mutableStateOf("") }
     var selectedHazard by remember { mutableStateOf("Flood / Waterlogging") }
-    val hazards = listOf("Flood / Waterlogging", "Extreme Heatwave", "Dark Store Curfew", "Vehicle Breakdown")
+    val hazards = listOf("Flood / Waterlogging", "Extreme Heatwave", "Curfews/Government", "Others")
 
     AlertDialog(
         onDismissRequest = onDismiss,
