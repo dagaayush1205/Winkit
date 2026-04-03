@@ -69,6 +69,7 @@ fun ShiftSafeDashboard(
     var walletBalance by remember { mutableStateOf(0.0) }
     var workerName by remember { mutableStateOf("Rider") }
     var showManualClaimDialog by remember { mutableStateOf(false) }
+    var showTermsDialog by remember { mutableStateOf(false) }
     // ── CHATBOT STATE ───────────────────────────────────────────────────────
     var showChatbot by remember { mutableStateOf(false) }
     var isVerifyingLocation by remember { mutableStateOf(false) }
@@ -93,14 +94,18 @@ fun ShiftSafeDashboard(
         }
     )
 
-    LaunchedEffect(workerId) {
+LaunchedEffect(workerId) {
         try {
             val profile = com.example.winkit.data.NetworkModule.api.getWorkerProfile("eq.$workerId")
             if (profile.isNotEmpty()) {
                 workerName = profile.first().name ?: "Rider"
             }
 
-            val policies = com.example.winkit.data.NetworkModule.api.getPoliciesByWorker("eq.$workerId")
+            // 🔥 FIX: We MUST only look for ACTIVE policies. If they only have expired ones, show the card!
+            val policies = com.example.winkit.data.NetworkModule.api.getActivePolicies(
+                workerId = "eq.$workerId", 
+                status = "eq.ACTIVE"
+            )
             hasPolicy = policies.isNotEmpty()
 
             walletBalance = com.example.winkit.data.SupabaseAuthHelper.getWalletBalance(workerId)
@@ -149,20 +154,9 @@ fun ShiftSafeDashboard(
 
                     false -> {
                         FirstTimeActivationCard(
-                            onActivate = {
-                                coroutineScope.launch {
-                                    val success = com.example.winkit.data.SupabaseAuthHelper.activateFirstPolicy(workerId)
-                                    if (success) {
-                                        hasPolicy = true
-                                        walletBalance = com.example.winkit.data.SupabaseAuthHelper.getWalletBalance(workerId)
-                                    } else {
-                                        Toast.makeText(context, "Activation failed", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }
+                            onActivate = { showTermsDialog = true } // 🔥 Just open the dialog!
                         )
                     }
-
                     true -> {
                         Text(
                             text = "Live Risk Metrics",
@@ -229,6 +223,25 @@ fun ShiftSafeDashboard(
                                 Toast.makeText(context, "Claim submitted for review!", Toast.LENGTH_LONG).show()
                             } else {
                                 Toast.makeText(context, "Failed to submit claim", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                )
+            }
+          // ── TERMS AND CONDITIONS DIALOG ──
+            if (showTermsDialog) {
+                TermsDialog(
+                    onDecline = { showTermsDialog = false },
+                    onAccept = {
+                        showTermsDialog = false
+                        coroutineScope.launch {
+                            val success = com.example.winkit.data.SupabaseAuthHelper.activateFirstPolicy(workerId)
+                            if (success) {
+                                hasPolicy = true
+                                walletBalance = com.example.winkit.data.SupabaseAuthHelper.getWalletBalance(workerId)
+                                Toast.makeText(context, "Protection Activated!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Activation failed", Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
@@ -442,20 +455,50 @@ fun ActivePoliciesSection(onPolicyClick: () -> Unit){
 
 @Composable
 fun HazardReportCard(onReportClick: () -> Unit) {
-    Surface(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(24.dp), color = Color(0xFFFFF1F0), border = BorderStroke(1.dp, Color(0xFFFFCCC7))) {
-        Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.Warning, null, tint = Color(0xFFF5222D), modifier = Modifier.size(32.dp))
-            Spacer(modifier = Modifier.height(12.dp))
-            Text("Hazardous Conditions?", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF820014))
-            Text("Report flood or extreme weather to secure your payout.", textAlign = TextAlign.Center, fontSize = 13.sp, color = Color(0xFFCF1322), modifier = Modifier.padding(vertical = 8.dp))
-            Spacer(modifier = Modifier.height(12.dp))
-            Button(onClick = onReportClick, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5222D)), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(50.dp)) {
-                Text("Report Hazard & Claim Payout", fontWeight = FontWeight.Bold)
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        shadowElevation = 2.dp,
+        border = BorderStroke(1.dp, Color(0xFFFFEBEE))
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Warning Icon Box
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFFFEBEE)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Warning, null, tint = Color(0xFFD32F2F), modifier = Modifier.size(24.dp))
+            }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            // Text Content
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Stuck in a Hazard?", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF1A1A2E))
+                Text("Report flooded roads or curfew to initiate manual review.", fontSize = 12.sp, color = Color.Gray, lineHeight = 16.sp)
+            }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            // The Button
+            Button(
+                onClick = onReportClick,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Text("Report", fontWeight = FontWeight.Bold, fontSize = 13.sp)
             }
         }
     }
 }
-
 @Composable
 fun FirstTimeActivationCard(onActivate: () -> Unit) {
     Card(
@@ -588,6 +631,49 @@ fun ManualClaimDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Cancel", color = Color.Gray)
+            }
+        }
+    )
+}
+
+@Composable
+fun TermsDialog(onAccept: () -> Unit, onDecline: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDecline,
+        containerColor = Color.White,
+        title = { 
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Security, contentDescription = null, tint = Color(0xFF5B2D8E))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Terms of Protection", fontWeight = FontWeight.Bold, color = Color(0xFF1A1A2E), fontSize = 18.sp)
+            }
+        },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text("1. Parametric Triggers", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("Payouts are triggered automatically when IMD or independent weather APIs confirm conditions exceed the severe threshold in your designated H3 Hexagon.", fontSize = 12.sp, color = Color.Gray)
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text("2. Fraud Prevention", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("Using mock GPS locations, rooted devices, or submitting false manual claims will result in immediate suspension and forfeiture of the premium.", fontSize = 12.sp, color = Color.Gray)
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text("3. Payout Limits", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("Maximum daily coverage is capped at ₹800. This covers lost potential earnings and does not constitute vehicle or medical insurance.", fontSize = 12.sp, color = Color.Gray)
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onAccept,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5B2D8E)),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("I Accept", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDecline) {
+                Text("Decline", color = Color.Gray)
             }
         }
     )
