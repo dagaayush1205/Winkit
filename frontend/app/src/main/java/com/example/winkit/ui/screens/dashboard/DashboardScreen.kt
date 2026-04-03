@@ -17,6 +17,8 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.stringResource
+import com.example.winkit.R
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -39,6 +41,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import com.example.winkit.ui.screens.alerts.RelocationAlertModal
 import android.os.Build
+import com.example.winkit.utils.tr
 
 // ── COLORS ──────────────────────────────────────────────────────────────────
 private val BannerStart  = Color(0xFF5B2D8E)
@@ -116,7 +119,7 @@ fun ShiftSafeDashboard(
                     onTriggerAlert()
                 }
             } else {
-                Toast.makeText(context, "Location required for fraud prevention", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, tr("Location required for fraud prevention"), Toast.LENGTH_LONG).show()
             }
         }
     )
@@ -201,7 +204,7 @@ LaunchedEffect(workerId) {
                     }
                     true -> {
                         Text(
-                            text = "Live Risk Metrics",
+                            text = tr("Live Risk Metrics"),
                             color = TextDark,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
@@ -246,14 +249,14 @@ LaunchedEffect(workerId) {
                       Spacer(modifier = Modifier.height(32.dp))
                         
                         // ── HACKATHON DEMO PANEL ──
-                        Text("Demo Triggers", color = Color.LightGray, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp))
+                        Text(tr("Demo Triggers"), color = Color.LightGray, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp))
                         Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Button(
                                 onClick = { showRelocationModal = true },
                                 colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray),
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("Trigger Relocation", fontSize = 10.sp)
+                                Text(tr("Trigger Relocation"), fontSize = 10.sp)
                             }
                         }
                         Spacer(modifier = Modifier.height(80.dp))
@@ -269,7 +272,7 @@ LaunchedEffect(workerId) {
                         
                         // Launch coroutine to push to Supabase
                         coroutineScope.launch {
-                            Toast.makeText(context, "Submitting claim...", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, tr("Submitting claim..."), Toast.LENGTH_SHORT).show()
                             
                             val success = com.example.winkit.data.SupabaseAuthHelper.fileManualClaim(
                                 workerId = workerId,
@@ -280,9 +283,9 @@ LaunchedEffect(workerId) {
                             )
                             
                             if (success) {
-                                Toast.makeText(context, "Claim submitted for review!", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, tr("Claim submitted for review!"), Toast.LENGTH_LONG).show()
                             } else {
-                                Toast.makeText(context, "Failed to submit claim", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, tr("Failed to submit claim"), Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
@@ -301,9 +304,9 @@ LaunchedEffect(workerId) {
                                 if (success) {
                                     hasPolicy = true
                                     walletBalance = com.example.winkit.data.SupabaseAuthHelper.getWalletBalance(workerId)
-                                    Toast.makeText(context, "Protection Activated!", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, tr("Protection Activated!"), Toast.LENGTH_SHORT).show()
                                 } else {
-                                    Toast.makeText(context, "Activation failed", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, tr("Activation failed"), Toast.LENGTH_SHORT).show()
                                 }
                             }
                         }
@@ -311,14 +314,15 @@ LaunchedEffect(workerId) {
                 )
             }
             // ── RELOCATION MODAL ──
+            // ── RELOCATION MODAL ──
             if (showRelocationModal) {
                 com.example.winkit.ui.screens.alerts.RelocationAlertModal(
                     onAccept = {
                         showRelocationModal = false
-                        
-                        // 🔥 Push the Relocation Event to Supabase!
+
                         coroutineScope.launch {
                             try {
+                                // 🔥 FIXED: Using correct Capitalized classes and parameters
                                 val relocationEvent = com.example.winkit.data.RelocationInsert(
                                     worker_id = workerId,
                                     from_zone = "Velachery",
@@ -326,15 +330,15 @@ LaunchedEffect(workerId) {
                                     bonus_amount = 150
                                 )
                                 com.example.winkit.data.NetworkModule.api.insertRelocationEvent(relocationEvent)
-                                Toast.makeText(context, "Routing to Adyar. ₹150 Bonus Locked!", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, tr("routing to adyar. ₹150 bonus locked!"), Toast.LENGTH_LONG).show()
                             } catch (e: Exception) {
-                                Toast.makeText(context, "Error accepting route: ${e.message}", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, tr("error accepting route:") + " ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
                     },
                     onDismiss = { showRelocationModal = false }
                 )
-            }            // ── CHATBOT SHEET (Floats on top of the UI) ──
+            }       // ── CHATBOT SHEET (Floats on top of the UI) ──
             if (showChatbot) {
                 WinkitChatbotSheet(onDismiss = { showChatbot = false })
             }
@@ -360,7 +364,7 @@ fun WeatherBanner(name: String, walletBalance: Double, temp: String, condition: 
     ) {
         StarField()
        Text(
-            text = "Terms & Conditions",
+            text = tr("Terms & Conditions"),
             color = Color.White.copy(alpha = 0.7f),
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
@@ -386,7 +390,7 @@ fun WeatherBanner(name: String, walletBalance: Double, temp: String, condition: 
         }
 
         Column(modifier = Modifier.align(Alignment.CenterStart).padding(start = 20.dp, top = 12.dp)) {
-            Text("Welcome back,", color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
+            Text(tr("Welcome back,"), color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
             Text(name, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.AccessTime, null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(13.dp))
@@ -432,8 +436,8 @@ fun CoveragePill() {
         Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(NeonGreen))
         Spacer(modifier = Modifier.width(6.dp))
         Column {
-            Text("Coverage", color = Color.White.copy(alpha = 0.8f), fontSize = 10.sp)
-            Text("Active", color = NeonGreen, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(tr("Coverage"), color = Color.White.copy(alpha = 0.8f), fontSize = 10.sp)
+            Text(tr("Active"), color = NeonGreen, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -484,11 +488,11 @@ fun GpsTrackingSection(
 ){
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Live Risk Telemetry", color = Color(0xFF1A1A2E), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(tr("Live Risk Telemetry"), color = Color(0xFF1A1A2E), fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Row(modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(Color(0xFF00E5A0).copy(alpha = 0.15f)).padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.MyLocation, null, tint = Color(0xFF00C48C), modifier = Modifier.size(12.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("3D Sync Active", color = Color(0xFF00C48C), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(tr("3D Sync Active"), color = Color(0xFF00C48C), fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
         Spacer(modifier = Modifier.height(12.dp))
@@ -608,13 +612,13 @@ fun GpsTrackingSection(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(modifier = Modifier.size(8.dp).background(Color(0xFF10B981), CircleShape))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Safe Zone", color = Color.White, fontSize = 10.sp)
+                            Text(tr("Safe Zone"), color = Color.White, fontSize = 10.sp)
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(modifier = Modifier.size(8.dp).background(Color(0xFFE11D48), CircleShape))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("High Risk", color = Color.White, fontSize = 10.sp)
+                            Text(tr("High Risk"), color = Color.White, fontSize = 10.sp)
                         }
                     }
                 }
@@ -628,8 +632,8 @@ fun GpsTrackingSection(
 fun ActivePoliciesSection(onPolicyClick: () -> Unit){
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Active Policies", color = Color(0xFF1A1A2E), fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Text("View All", color = Color(0xFF5B2D8E), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(tr("Active Policies"), color = Color(0xFF1A1A2E), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(tr("View All"), color = Color(0xFF5B2D8E), fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(modifier = Modifier.height(12.dp))
         Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE0E6ED)), modifier = Modifier.fillMaxWidth().clickable { onPolicyClick() }){
@@ -678,8 +682,8 @@ fun HazardReportCard(onReportClick: () -> Unit) {
             
             // Text Content
             Column(modifier = Modifier.weight(1f)) {
-                Text("Stuck in a Hazard?", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF1A1A2E))
-                Text("Report flooded roads or curfew to initiate manual review.", fontSize = 12.sp, color = Color.Gray, lineHeight = 16.sp)
+                Text(tr("Stuck in a Hazard?"), fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF1A1A2E))
+                Text(tr("Report flooded roads or curfew to initiate manual review."), fontSize = 12.sp, color = Color.Gray, lineHeight = 16.sp)
             }
             
             Spacer(modifier = Modifier.width(16.dp))
@@ -691,7 +695,7 @@ fun HazardReportCard(onReportClick: () -> Unit) {
                 shape = RoundedCornerShape(12.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
             ) {
-                Text("Report", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text(tr("Report"), fontWeight = FontWeight.Bold, fontSize = 13.sp)
             }
         }
     }
@@ -762,7 +766,7 @@ fun FirstTimeActivationCard(onActivate: () -> Unit) {
                         .fillMaxWidth()
                         .height(54.dp)
                 ) {
-                    Text("Activate Now • ₹49/wk", color = Color(0xFF1A0A3B), fontWeight = FontWeight.Black, fontSize = 16.sp)
+                    Text(tr("Activate Now • ₹49/wk"), color = Color(0xFF1A0A3B), fontWeight = FontWeight.Black, fontSize = 16.sp)
                 }
             }
         }
@@ -781,10 +785,10 @@ fun ManualClaimDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Color.White,
-        title = { Text("File Manual Claim", fontWeight = FontWeight.Bold, color = Color(0xFF1A1A2E)) },
+        title = { Text(tr("File Manual Claim"), fontWeight = FontWeight.Bold, color = Color(0xFF1A1A2E)) },
         text = {
             Column {
-                Text("Select Hazard Type", fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                Text(tr("Select Hazard Type"), fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 // Simple dropdown simulation (Scrollable Row of chips for hackathon speed)
@@ -805,12 +809,12 @@ fun ManualClaimDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                Text("Description (Optional)", fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                Text(tr("Description (Optional)"), fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    placeholder = { Text("E.g., Road blocked near Velachery bridge", fontSize = 12.sp) },
+                    placeholder = { Text(tr("E.g., Road blocked near Velachery bridge"), fontSize = 12.sp) },
                     modifier = Modifier.fillMaxWidth().height(100.dp),
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -822,12 +826,12 @@ fun ManualClaimDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5222D)),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text("Submit Claim", fontWeight = FontWeight.Bold)
+                Text(tr("Submit Claim"), fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = Color.Gray)
+                Text(tr("Cancel"), color = Color.Gray)
             }
         }
     )
@@ -842,21 +846,21 @@ fun TermsDialog(onAccept: () -> Unit, onDecline: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Security, contentDescription = null, tint = Color(0xFF5B2D8E))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Terms of Protection", fontWeight = FontWeight.Bold, color = Color(0xFF1A1A2E), fontSize = 18.sp)
+                Text(tr("Terms of Protection"), fontWeight = FontWeight.Bold, color = Color(0xFF1A1A2E), fontSize = 18.sp)
             }
         },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                Text("1. Parametric Triggers", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text("Payouts are triggered automatically when IMD or independent weather APIs confirm conditions exceed the severe threshold in your designated H3 Hexagon.", fontSize = 12.sp, color = Color.Gray)
+                Text(tr("1. Parametric Triggers"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(tr("Payouts are triggered automatically when IMD or independent weather APIs confirm conditions exceed the severe threshold in your designated H3 Hexagon."), fontSize = 12.sp, color = Color.Gray)
                 Spacer(modifier = Modifier.height(12.dp))
                 
-                Text("2. Fraud Prevention", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text("Using mock GPS locations, rooted devices, or submitting false manual claims will result in immediate suspension and forfeiture of the premium.", fontSize = 12.sp, color = Color.Gray)
+                Text(tr("2. Fraud Prevention"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(tr("Using mock GPS locations, rooted devices, or submitting false manual claims will result in immediate suspension and forfeiture of the premium."), fontSize = 12.sp, color = Color.Gray)
                 Spacer(modifier = Modifier.height(12.dp))
                 
-                Text("3. Payout Limits", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text("Maximum daily coverage is capped at ₹800. This covers lost potential earnings and does not constitute vehicle or medical insurance.", fontSize = 12.sp, color = Color.Gray)
+                Text(tr("3. Payout Limits"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(tr("Maximum daily coverage is capped at ₹800. This covers lost potential earnings and does not constitute vehicle or medical insurance."), fontSize = 12.sp, color = Color.Gray)
             }
         },
         confirmButton = {
@@ -865,12 +869,12 @@ fun TermsDialog(onAccept: () -> Unit, onDecline: () -> Unit) {
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5B2D8E)),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text("I Accept", fontWeight = FontWeight.Bold)
+                Text(tr("I Accept"), fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDecline) {
-                Text("Decline", color = Color.Gray)
+                Text(tr("Decline"), color = Color.Gray)
             }
         }
     )
