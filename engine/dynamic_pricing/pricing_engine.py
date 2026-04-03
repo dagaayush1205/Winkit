@@ -13,41 +13,60 @@ from services.civic_risk_agent import CivicRiskAgent, fetch_live_chennai_headlin
 from supabase import create_client, Client
 
 class DynamicPricingEngine:
+    """
+    Core Actuarial Engine for Winkit.
+    Evaluates environmental/civic risk across all H3 spatial zones and calculates
+    pure, uncapped micro-premiums utilizing risk pooling, with a strict minimum premium floor.
+    """
+    
     def __init__(self):
-        # Initializing Services
+        # Initialize External Services
         self.weather_client = WeatherAPIClient(api_key=OPENWEATHER_API_KEY, demo_mode=DEMO_MODE)
         self.civic_agent = CivicRiskAgent()
-        
-        # Initialize Supabase
         self.supabase: Client = create_client(SUPABASE_DB_URL, SUPABASE_API_KEY)
 
-        # Actuarial Constants
-        self.k_time_decay = 0.05  
-        self.w_variance = 0.05    
-        self.platform_fee = 10.00 
+        # ---------------------------------------------------------
+        # ACTUARIAL & FINANCIAL CONSTANTS
+        # ---------------------------------------------------------
+        self.k_time_decay = 0.05        # Uncertainty growth over time
+        self.w_variance = 0.05          # Binary variance weight
+        self.platform_fee = 10.00       # Base operation cost (₹)
+        self.risk_pooling_factor = 0.10 # % of exposed capital expected to be claimed
+        self.premium_floor = 50.00      # 🚨 The Absolute Base Minimum Charge (₹)
     
-    def fetch_all_workers(self):
-        """Fetches all active workers, their trust scores, and their exact location."""
+    def fetch_all_workers(self) -> list:
+        """Fetches active workers, trust scores, locations, AND their chosen coverage."""
         try:
-            # FIX 1: Now fetching the primary_h3_hex to isolate risk!
-            res = self.supabase.table("Workers").select("worker_id, trust_score, primary_h3_hex").execute()
-            return res.data or []
+            # Fetch workers
+            workers_res = self.supabase.table("Workers").select("worker_id, trust_score, primary_h3_hex").execute()
+            # Fetch active policies to get dynamic coverage limits
+            policies_res = self.supabase.table("weekly_policies").select("worker_id, max_daily_coverage").eq("status", "ACTIVE").execute()
+            
+            workers = workers_res.data or []
+            policies = {p["worker_id"]: p["max_daily_coverage"] for p in (policies_res.data or [])}
+            
+            # Merge their chosen coverage limit into the worker profile
+            for w in workers:
+                w["coverage_limit"] = policies.get(w["worker_id"], 500.0) # Default to 500 if no policy found
+                
+            return workers
         except Exception as e:
             print(f"❌ Error fetching workers: {e}")
             return []
 
-    def process_all_zones(self, dynamic_v_loss: float = 500.0):
-        """The Cron Entry Point: Uses a Two-Pass architecture for extreme efficiency."""
-        
+    def process_all_zones(self):
+        """
+        The Cron Entry Point. 
+        Pass 1: Evaluates global infrastructure and weather risk.
+        Pass 2: Calculates specific, isolated premiums for active workers based on their policy.
+        """
         print("🌍 Fetching active zones from h3_zone_states...")
-        # Note: Depending on your DB schema, this might be h3_zone_status
         response = self.supabase.table("h3_zone_states").select("*").execute()
         zones = response.data
-
         workers = self.fetch_all_workers()
 
         if not zones or not workers:
-            print("❌ Missing zones or workers. Aborting sweep.")
+            print("❌ Missing zones or workers. Aborting actuarial sweep.")
             return
 
         print("📰 Fetching live Chennai news...")
@@ -57,6 +76,7 @@ class DynamicPricingEngine:
         daily_pop = {}
         today = date.today()
         
+        # Aggregate maximum Rain Probability (PoP) per day
         for block in raw_weather_data.get('list', []):
             dt = datetime.fromtimestamp(block['dt']).date()
             pop = block.get('pop', 0.0) 
@@ -64,19 +84,18 @@ class DynamicPricingEngine:
                 daily_pop[dt] = pop
 
         # ==========================================
-        # PASS 1: EVALUATE ZONES ONCE
+        # PASS 1: SPATIAL RISK EVALUATION
         # ==========================================
         evaluated_zones = {} 
 
         for zone in zones:
             zone_7_day_metrics = self._evaluate_and_update_zone(
-                zone, live_news, daily_pop, today, dynamic_v_loss
+                zone, live_news, daily_pop, today
             )
-            # FIX 2a: Store the memory by HEX_ID, not zone_name, so we can map it to riders
             evaluated_zones[zone['hex_id']] = zone_7_day_metrics
 
         # ==========================================
-        # PASS 2: CALCULATE WORKER PREMIUMS
+        # PASS 2: WORKER PREMIUM CALCULATION
         # ==========================================
         current_time = datetime.now(timezone.utc)
         hour_bucket = current_time.replace(minute=0, second=0, microsecond=0)
@@ -89,24 +108,35 @@ class DynamicPricingEngine:
                 trust_score = float(worker.get("trust_score") or 50.0)
                 worker_f_risk = max(0.0, (100 - trust_score) * 0.005)
 
-                # FIX 2b: Isolate the premium math! Only calculate if they are in an active zone.
+                # Isolate calculation to the worker's exact spatial hex
                 if not primary_hex or primary_hex not in evaluated_zones:
-                    final_gross_premium = self.platform_fee
-                    print(f"\n👤 Processing {worker_id} (No active zone. Base fee: ₹{final_gross_premium})")
+                    # Apply the floor even if they aren't in an active zone
+                    final_gross_premium = max(self.platform_fee, self.premium_floor)
+                    print(f"\n👤 Processing {worker_id} (No active zone. Base fee applied: ₹{final_gross_premium})")
                 else:
                     print(f"\n👤 Processing {worker_id} in {primary_hex} (Trust Penalty: +{worker_f_risk:.2f})")
                     total_premium = 0.0
-                    
-                    # Pull ONLY the math for the street they are standing on
                     metrics_7_days = evaluated_zones[primary_hex]
                     
-                    for daily_el, daily_u_risk in metrics_7_days:
+                    # 1. Get the worker's specific requested coverage (L)
+                    worker_coverage = float(worker.get("coverage_limit", 500.0))
+                    
+                    for p_union, daily_u_risk in metrics_7_days:
                         raw_beta = 1.0 + daily_u_risk + worker_f_risk
                         capped_beta = min(raw_beta, 2.5)
-                        total_premium += (capped_beta * daily_el)
-                    affordibility_threshold = 0.1
-                    final_gross_premium = round(total_premium + self.platform_fee, 2) * affordibility_threshold
+                        
+                        # 2. Calculate their personal Expected Loss (Probability * Coverage)
+                        personal_expected_loss = p_union * worker_coverage
+                        
+                        # 3. Apply Law of Large Numbers (Risk Pooling)
+                        pooled_el = personal_expected_loss * self.risk_pooling_factor
+                        total_premium += (capped_beta * pooled_el)
 
+                    # 4. Pure Actuarial Pricing WITH A FLOOR
+                    raw_gross_premium = total_premium + self.platform_fee
+                    final_gross_premium = max(round(raw_gross_premium, 2), self.premium_floor)
+
+                # Commit premium charge to ledger
                 self.supabase.table("worker_charges").upsert({
                     "worker_id": worker_id,
                     "created_at": current_time.isoformat(),
@@ -115,12 +145,13 @@ class DynamicPricingEngine:
                 }).execute()
 
                 print(f"💼 Updated {worker_id} → ₹{final_gross_premium}")
+                
             except Exception as e:
                 print(f"❌ Failed to process worker {worker.get('worker_id', 'UNKNOWN')}. Error: {e}")
                 continue
 
-    def _evaluate_and_update_zone(self, zone, live_news, daily_pop, today, dynamic_v_loss):
-        """Calculates environmental risk, updates DB, and returns a 7-day metric list."""
+    def _evaluate_and_update_zone(self, zone, live_news, daily_pop, today):
+        """Calculates environmental risk, manages V_zone healing, and logs disasters."""
         hex_id = zone['hex_id']
         zone_name = zone['zone_name']
         
@@ -136,9 +167,9 @@ class DynamicPricingEngine:
 
         today_effective_weather = 0.0
         today_p_union = 0.0
-        
         metrics_7_days = []
 
+        # 7-Day Forward Simulation Loop
         for t in range(7):
             target_date = today + timedelta(days=t)
             
@@ -151,6 +182,7 @@ class DynamicPricingEngine:
 
             p_civic = base_p_civic * (0.5 ** t)
 
+            # --- THE WINKIT SPATIAL MATH ---
             infrastructure_multiplier = 1.0 + v_zone_score
             boosted_p_weather = min(raw_p_weather * infrastructure_multiplier, 1.0)
 
@@ -167,26 +199,23 @@ class DynamicPricingEngine:
                 today_effective_weather = effective_p_weather
                 today_p_union = p_union
 
-            expected_loss_el = p_union * dynamic_v_loss
+            # Calculate base math parameters (Now strictly probabilities and multipliers)
             time_penalty = self.k_time_decay * math.sqrt(t)
             variance_penalty = self.w_variance * (p_union * (1.0 - p_union))
             u_risk = time_penalty + variance_penalty
             
-            metrics_7_days.append((expected_loss_el, u_risk))
+            metrics_7_days.append((p_union, u_risk))
 
         # ==========================================
-        # DATABASE WRITE OPERATIONS 
+        # DATABASE WRITE & STATE MANAGEMENT
         # ==========================================
-        
-        # FIX 3: THE INFRASTRUCTURE HEALING MATH
         new_v_zone = v_zone_score
         
-        # If the combined risk today was very low (< 10%), it was a peaceful day.
-        # We slowly heal the infrastructure by 1%, down to a permanent baseline floor of 0.20.
+        # Infrastructure Healing: If risk was low, heal infrastructure by 1% (Floor: 0.20)
         if today_p_union < 0.10:
             new_v_zone = max(v_zone_score - 0.01, 0.20) 
 
-        # Save both the standing water and the healed V_zone!
+        # Persist memory to H3 State Table
         self.supabase.table("h3_zone_states").update({
             "yesterday_water": round(today_effective_weather, 4),
             "v_zone_score": round(new_v_zone, 4)
@@ -195,7 +224,7 @@ class DynamicPricingEngine:
         current_time = datetime.now(timezone.utc)
         hour_bucket = current_time.replace(minute=0, second=0, microsecond=0)
 
-        # Log Disruption Event if notable
+        # Log Smart Contract Disruption Triggers
         if today_p_union > 0.10: 
             event_type = "CIVIC" if base_p_civic > today_effective_weather else "WEATHER"
             event_id = f"{hex_id}-{event_type}-{hour_bucket.strftime('%Y%m%d%H')}"
@@ -212,10 +241,10 @@ class DynamicPricingEngine:
             }).execute()
             print(f"🚨 Logged {event_type} Disruption Event: {event_id}")
         else:
-            print("✅ Zone risk is low. No disruption logged. (V_zone slowly healing)")
+            print("✅ Zone risk is low. No disruption logged. (V_zone healing active)")
             
         return metrics_7_days
 
 if __name__ == "__main__":
     engine = DynamicPricingEngine()
-    engine.process_all_zones(dynamic_v_loss=500.0)
+    engine.process_all_zones()
