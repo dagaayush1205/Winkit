@@ -23,7 +23,7 @@ class DynamicPricingEngine:
 
         # Actuarial Constants
         self.k_time_decay = 0.05  
-        self.w_variance = 0.40    
+        self.w_variance = 0.05    
         self.platform_fee = 10.00 
     
     def fetch_all_workers(self):
@@ -104,8 +104,8 @@ class DynamicPricingEngine:
                         raw_beta = 1.0 + daily_u_risk + worker_f_risk
                         capped_beta = min(raw_beta, 2.5)
                         total_premium += (capped_beta * daily_el)
-
-                    final_gross_premium = round(total_premium + self.platform_fee, 2)
+                    affordibility_threshold = 0.1
+                    final_gross_premium = round(total_premium + self.platform_fee, 2) * affordibility_threshold
 
                 self.supabase.table("worker_charges").upsert({
                     "worker_id": worker_id,
