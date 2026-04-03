@@ -30,11 +30,14 @@ fun AppNavigation(isLoggedIn: Boolean, sharedPref: SharedPreferences) {
     val dashboardViewModel: DashboardViewModel = viewModel()
     val walletViewModel: WalletViewModel = viewModel()
 
-    // workerId is populated after either Sign Up or Login
-    var activeWorkerId by remember { mutableStateOf("") }
+    //var activeWorkerId by remember { mutableStateOf("") }
+    //val startDest = "signup"
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val savedWorkerId = com.example.winkit.utils.AuthManager.getWorkerId(context)
 
-    // Always boot to signup for demo (shows the full flow)
-    val startDest = "signup"
+    var activeWorkerId by remember { mutableStateOf(savedWorkerId ?: "") }
+
+    val startDest = if (savedWorkerId != null) "dashboard" else "signup"
 
     NavHost(navController = navController, startDestination = startDest) {
 

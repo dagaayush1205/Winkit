@@ -26,6 +26,7 @@ import com.example.winkit.data.NetworkModule
 import com.example.winkit.data.SupabaseWorker
 import com.example.winkit.ui.components.ShiftSafeBottomNav
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.BorderStroke
 
 @Composable
 fun ProfileScreen(workerId: String, navController: NavController) {
@@ -177,6 +178,28 @@ fun ProfileScreen(workerId: String, navController: NavController) {
                         Text("Save Changes", fontWeight = FontWeight.Bold)
                     }
                 }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedButton(
+                    onClick = {
+                        com.example.winkit.utils.AuthManager.logout(context)
+                        
+                        // 🔥 FIX: Use "login" instead of "login_route"
+                        navController.navigate("login") { 
+                            popUpTo(0) { inclusive = true }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color.Red),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red)
+                ) {
+                    Icon(Icons.Default.Logout, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Log Out", fontWeight = FontWeight.Bold)
+                }
+                
+                Spacer(modifier = Modifier.height(40.dp))
             }
         }
     }

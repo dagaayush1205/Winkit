@@ -37,6 +37,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import com.example.winkit.ui.screens.alerts.RelocationAlertModal
+import android.os.Build
 
 // ── COLORS ──────────────────────────────────────────────────────────────────
 private val BannerStart  = Color(0xFF5B2D8E)
@@ -64,14 +66,40 @@ fun ShiftSafeDashboard(
     onPolicyClick: () -> Unit
 ) {
     val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        // Wait exactly 12 seconds after the dashboard loads
+        delay(12000) 
+        
+        // Fire the engagement notification!
+        com.example.winkit.utils.NotificationHelper.showPromoNotification(
+            context = context, 
+            title = "👋 Long time no see!", 
+            message = "Surge pricing is active in your area. Jump online now to earn!"
+        )
+    }
     val coroutineScope = rememberCoroutineScope()
     var hasPolicy by remember { mutableStateOf<Boolean?>(null) }
     var walletBalance by remember { mutableStateOf(0.0) }
     var workerName by remember { mutableStateOf("Rider") }
     var showManualClaimDialog by remember { mutableStateOf(false) }
+    var showTermsDialog by remember { mutableStateOf(false) }
+    var isActivatingPolicy by remember { mutableStateOf(false) } 
+    var showRelocationModal by remember { mutableStateOf(false) }
     // ── CHATBOT STATE ───────────────────────────────────────────────────────
     var showChatbot by remember { mutableStateOf(false) }
     var isVerifyingLocation by remember { mutableStateOf(false) }
+    var mapDataJson by remember { mutableStateOf("[]") }
+    
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { /* We just need to ask, don't strictly need to handle result for demo */ }
+    )
+
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
@@ -93,21 +121,35 @@ fun ShiftSafeDashboard(
         }
     )
 
-    LaunchedEffect(workerId) {
+LaunchedEffect(workerId) {
         try {
             val profile = com.example.winkit.data.NetworkModule.api.getWorkerProfile("eq.$workerId")
             if (profile.isNotEmpty()) {
                 workerName = profile.first().name ?: "Rider"
             }
 
-            val policies = com.example.winkit.data.NetworkModule.api.getPoliciesByWorker("eq.$workerId")
+            val policies = com.example.winkit.data.NetworkModule.api.getActivePolicies(
+                workerId = "eq.$workerId", 
+                status = "eq.ACTIVE"
+            )
             hasPolicy = policies.isNotEmpty()
 
             walletBalance = com.example.winkit.data.SupabaseAuthHelper.getWalletBalance(workerId)
+
+            val zones = com.example.winkit.data.NetworkModule.api.getZoneData()
+            val formattedJson = zones.joinToString(prefix = "[", postfix = "]") { zone ->
+                val hexId = zone["hex_id"].toString()
+                val risk = (zone["v_zone_score"] as? Double) ?: 0.0
+                val height = (risk * 50).toInt() + 5 // Calculates the 3D height based on risk
+                "{ hex: '$hexId', risk: $risk, height: $height }"
+            }
+            mapDataJson = formattedJson
+
         } catch (e: Exception) {
             hasPolicy = false
         }
     }
+
 
     Scaffold(
         bottomBar = { ShiftSafeBottomNav(navController = navController) },
@@ -116,7 +158,6 @@ fun ShiftSafeDashboard(
         floatingActionButtonPosition = FabPosition.End
     ) { innerPadding ->
 
-        // 🔥 FIXED: Wrap everything in a Box so the Chatbot sheet floats on top,
         // while the main content stays inside the scrollable Column.
         Box(modifier = Modifier.fillMaxSize()) {
 
@@ -131,12 +172,15 @@ fun ShiftSafeDashboard(
                     name = workerName,
                     walletBalance = walletBalance,
                     temp = viewModel.temperature,
-                    condition = viewModel.weatherCondition
+                    condition = viewModel.weatherCondition,
+                    onTermsClick = { 
+                        isActivatingPolicy = false // Just viewing
+                        showTermsDialog = true 
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // 🔥 FIXED: The 'when' block is now SAFELY INSIDE the Column
                 when (hasPolicy) {
                     null -> {
                         Box(
@@ -149,20 +193,12 @@ fun ShiftSafeDashboard(
 
                     false -> {
                         FirstTimeActivationCard(
-                            onActivate = {
-                                coroutineScope.launch {
-                                    val success = com.example.winkit.data.SupabaseAuthHelper.activateFirstPolicy(workerId)
-                                    if (success) {
-                                        hasPolicy = true
-                                        walletBalance = com.example.winkit.data.SupabaseAuthHelper.getWalletBalance(workerId)
-                                    } else {
-                                        Toast.makeText(context, "Activation failed", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
+                            onActivate = { 
+                                isActivatingPolicy = true 
+                                showTermsDialog = true 
                             }
                         )
                     }
-
                     true -> {
                         Text(
                             text = "Live Risk Metrics",
@@ -182,7 +218,10 @@ fun ShiftSafeDashboard(
 
                         Spacer(modifier = Modifier.height(20.dp))
 
-                        GpsTrackingSection(onReportClick = { onTriggerAlert() })
+                        GpsTrackingSection(
+                            zoneDataJson = mapDataJson, 
+                            onReportClick = { onTriggerAlert() }
+                        )
 
                         Spacer(modifier = Modifier.height(24.dp))
 
@@ -203,6 +242,21 @@ fun ShiftSafeDashboard(
                         Spacer(modifier = Modifier.height(24.dp))
 
                         ActivePoliciesSection(onPolicyClick = onPolicyClick)
+
+                      Spacer(modifier = Modifier.height(32.dp))
+                        
+                        // ── HACKATHON DEMO PANEL ──
+                        Text("Demo Triggers", color = Color.LightGray, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp))
+                        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Button(
+                                onClick = { showRelocationModal = true },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Trigger Relocation", fontSize = 10.sp)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(80.dp))
                     }
                 }
             } // <--- End of main scrollable Column
@@ -234,7 +288,53 @@ fun ShiftSafeDashboard(
                     }
                 )
             }
-            // ── CHATBOT SHEET (Floats on top of the UI) ──
+          // ── TERMS AND CONDITIONS DIALOG ──
+            if (showTermsDialog) {
+                TermsDialog(
+                    onDecline = { showTermsDialog = false },
+                    onAccept = {
+                        showTermsDialog = false
+                        
+                        if (isActivatingPolicy) { // ONLY charge if they clicked from the green card
+                            coroutineScope.launch {
+                                val success = com.example.winkit.data.SupabaseAuthHelper.activateFirstPolicy(workerId)
+                                if (success) {
+                                    hasPolicy = true
+                                    walletBalance = com.example.winkit.data.SupabaseAuthHelper.getWalletBalance(workerId)
+                                    Toast.makeText(context, "Protection Activated!", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "Activation failed", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    }
+                )
+            }
+            // ── RELOCATION MODAL ──
+            if (showRelocationModal) {
+                com.example.winkit.ui.screens.alerts.RelocationAlertModal(
+                    onAccept = {
+                        showRelocationModal = false
+                        
+                        // 🔥 Push the Relocation Event to Supabase!
+                        coroutineScope.launch {
+                            try {
+                                val relocationEvent = com.example.winkit.data.RelocationInsert(
+                                    worker_id = workerId,
+                                    from_zone = "Velachery",
+                                    to_zone = "Adyar Hub",
+                                    bonus_amount = 150
+                                )
+                                com.example.winkit.data.NetworkModule.api.insertRelocationEvent(relocationEvent)
+                                Toast.makeText(context, "Routing to Adyar. ₹150 Bonus Locked!", Toast.LENGTH_LONG).show()
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Error accepting route: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                    onDismiss = { showRelocationModal = false }
+                )
+            }            // ── CHATBOT SHEET (Floats on top of the UI) ──
             if (showChatbot) {
                 WinkitChatbotSheet(onDismiss = { showChatbot = false })
             }
@@ -244,7 +344,7 @@ fun ShiftSafeDashboard(
 
 // ── Weather banner ─────────────────────────────────────────────────────────
 @Composable
-fun WeatherBanner(name: String, walletBalance: Double, temp: String, condition: String) {
+fun WeatherBanner(name: String, walletBalance: Double, temp: String, condition: String, onTermsClick: () -> Unit) {
     val currentTime = remember {
         SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
     }
@@ -259,7 +359,16 @@ fun WeatherBanner(name: String, walletBalance: Double, temp: String, condition: 
             .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
     ) {
         StarField()
-
+       Text(
+            text = "Terms & Conditions",
+            color = Color.White.copy(alpha = 0.7f),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(16.dp)
+                .clickable { onTermsClick() }
+        )
         Surface(
             modifier = Modifier.align(Alignment.TopEnd).padding(16.dp),
             color = Color.White.copy(alpha = 0.15f),
@@ -367,45 +476,145 @@ fun RiskCard(modifier: Modifier, iconVector: ImageVector, iconTint: Color, tag: 
 }
 
 @Composable
-fun GpsTrackingSection(onReportClick: () -> Unit = {}){
+fun GpsTrackingSection(
+    liveLat: Double = 12.9815,
+    liveLng: Double = 80.2230,
+    zoneDataJson: String = "[]", // 🔥 WE WILL PASS REAL DATA HERE
+    onReportClick: () -> Unit = {}
+){
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Live GPS Tracking", color = TextDark, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Row(modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(NeonGreen.copy(alpha = 0.15f)).padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.MyLocation, null, tint = NeonGreen, modifier = Modifier.size(12.dp))
+            Text("Live Risk Telemetry", color = Color(0xFF1A1A2E), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Row(modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(Color(0xFF00E5A0).copy(alpha = 0.15f)).padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.MyLocation, null, tint = Color(0xFF00C48C), modifier = Modifier.size(12.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Active", color = NeonGreen, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("3D Sync Active", color = Color(0xFF00C48C), fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
         Spacer(modifier = Modifier.height(12.dp))
-        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = CardBg), elevation = CardDefaults.cardElevation(2.dp), modifier = Modifier.fillMaxWidth().height(220.dp)) {
+        
+        Card(
+            shape = RoundedCornerShape(16.dp), 
+            elevation = CardDefaults.cardElevation(6.dp), 
+            modifier = Modifier.fillMaxWidth().height(280.dp)
+        ) {
             Box(modifier = Modifier.fillMaxSize()) {
+                
+                // 🔥 THE NATIVE DECK.GL ENGINE
                 AndroidView(factory = { context ->
                     WebView(context).apply {
                         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                         settings.javaScriptEnabled = true
+                        settings.domStorageEnabled = true
+                        setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
                         webViewClient = WebViewClient()
+                        
+                        // We inject the JSON string directly into the JS variable 'backendData'
                         val htmlData = """
-                            <!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"/><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" /><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><style>body{padding:0;margin:0}#map{height:100vh}</style></head><body><div id="map"></div><script>var map=L.map('map',{zoomControl:false}).setView([12.9815,80.2230],14);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);L.circle([12.9815,80.2230],{color:'#E65100',fillColor:'#FF9800',fillOpacity:0.4,radius:800}).addTo(map);</script></body></html>
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+                                <script src="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.js"></script>
+                                <link href="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.css" rel="stylesheet" />
+                                <script src="https://unpkg.com/deck.gl@8.9.0/dist.min.js"></script>
+                                <style>
+                                    body { margin: 0; padding: 0; background: #0f172a; overflow: hidden; }
+                                    #map-container { width: 100vw; height: 100vh; }
+                                    .pulse-dot {
+                                        width: 18px; height: 18px;
+                                        background-color: #00E5A0;
+                                        border-radius: 50%;
+                                        box-shadow: 0 0 15px rgba(0, 229, 160, 0.8);
+                                        animation: pulse 1.5s infinite cubic-bezier(0.66, 0, 0, 1);
+                                    }
+                                    @keyframes pulse {
+                                        to { box-shadow: 0 0 0 40px rgba(0, 229, 160, 0); }
+                                    }
+                                    .leaflet-control-attribution { display: none; }
+                                </style>
+                            </head>
+                            <body>
+                                <div id="map-container"></div>
+                                <script>
+                                    const { DeckGL, H3HexagonLayer } = deck;
+                                    
+                                    // Injecting the Kotlin JSON string
+                                    const backendData = $zoneDataJson;
+
+                                    // Fallback dummy data just in case backend is empty during demo
+                                    const mapData = backendData.length > 0 ? backendData : [
+                                        { hex: '8961892a03bffff', risk: 0.8, height: 40 },
+                                        { hex: '8961892a03bffff', risk: 0.2, height: 10 }
+                                    ];
+
+                                    const hexagonLayer = new H3HexagonLayer({
+                                        id: 'h3-layer',
+                                        data: mapData,
+                                        pickable: true,
+                                        wireframe: false,
+                                        filled: true,
+                                        extruded: true,
+                                        elevationScale: 20,
+                                        getHexagon: d => d.hex,
+                                        getFillColor: d => {
+                                            const risk = d.risk;
+                                            return [
+                                                Math.round(16 + (225 - 16) * risk),  // R
+                                                Math.round(185 + (26 - 185) * risk), // G
+                                                Math.round(129 + (80 - 129) * risk), // B
+                                                200 // Alpha
+                                            ];
+                                        },
+                                        getElevation: d => d.height
+                                    });
+
+                                    new DeckGL({
+                                        container: 'map-container',
+                                        mapStyle: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+                                        initialViewState: {
+                                            longitude: $liveLng,
+                                            latitude: $liveLat,
+                                            zoom: 12.5,
+                                            pitch: 55, // Aggressive 3D angle
+                                            bearing: 0
+                                        },
+                                        controller: true,
+                                        layers: [hexagonLayer]
+                                    });
+
+                                    // Rider Live Dot
+                                    setTimeout(() => {
+                                        const map = document.querySelector('.maplibregl-map').maplibreglMap;
+                                        if(map) {
+                                            const el = document.createElement('div');
+                                            el.className = 'pulse-dot';
+                                            new maplibregl.Marker({element: el}).setLngLat([$liveLng, $liveLat]).addTo(map);
+                                        }
+                                    }, 1500);
+                                </script>
+                            </body>
+                            </html>
                         """.trimIndent()
                         loadDataWithBaseURL("https://app.local/", htmlData, "text/html", "UTF-8", null)
                     }
                 }, modifier = Modifier.fillMaxSize())
 
-                Surface(color = Color(0xFFFFF3E0), shape = RoundedCornerShape(8.dp), modifier = Modifier.padding(12.dp).align(Alignment.TopStart), border = BorderStroke(1.dp, Color(0xFFFFB74D))) {
-                    Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFFE65100)))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("100ft Road Closed (Waterlogging)", color = Color(0xFFE65100), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-                Surface(color = Color.White.copy(alpha = 0.95f), shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp), modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
-                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.LocationOn, null, tint = GpsIcon)
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text("CURRENT ZONE", color = TextGray, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            Text("Velachery, Chennai", color = TextDark, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                // ── UI OVERLAYS ──
+                Surface(color = Color(0xFF0F172A).copy(alpha = 0.85f), shape = RoundedCornerShape(8.dp), modifier = Modifier.padding(12.dp).align(Alignment.TopStart)) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Text("3D GRID STATUS", color = Color.Gray, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(modifier = Modifier.size(8.dp).background(Color(0xFF10B981), CircleShape))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Safe Zone", color = Color.White, fontSize = 10.sp)
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(modifier = Modifier.size(8.dp).background(Color(0xFFE11D48), CircleShape))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("High Risk", color = Color.White, fontSize = 10.sp)
                         }
                     }
                 }
@@ -413,6 +622,7 @@ fun GpsTrackingSection(onReportClick: () -> Unit = {}){
         }
     }
 }
+
 
 @Composable
 fun ActivePoliciesSection(onPolicyClick: () -> Unit){
@@ -442,20 +652,50 @@ fun ActivePoliciesSection(onPolicyClick: () -> Unit){
 
 @Composable
 fun HazardReportCard(onReportClick: () -> Unit) {
-    Surface(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(24.dp), color = Color(0xFFFFF1F0), border = BorderStroke(1.dp, Color(0xFFFFCCC7))) {
-        Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.Warning, null, tint = Color(0xFFF5222D), modifier = Modifier.size(32.dp))
-            Spacer(modifier = Modifier.height(12.dp))
-            Text("Hazardous Conditions?", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF820014))
-            Text("Report flood or extreme weather to secure your payout.", textAlign = TextAlign.Center, fontSize = 13.sp, color = Color(0xFFCF1322), modifier = Modifier.padding(vertical = 8.dp))
-            Spacer(modifier = Modifier.height(12.dp))
-            Button(onClick = onReportClick, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5222D)), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(50.dp)) {
-                Text("Report Hazard & Claim Payout", fontWeight = FontWeight.Bold)
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        shadowElevation = 2.dp,
+        border = BorderStroke(1.dp, Color(0xFFFFEBEE))
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Warning Icon Box
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFFFEBEE)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Warning, null, tint = Color(0xFFD32F2F), modifier = Modifier.size(24.dp))
+            }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            // Text Content
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Stuck in a Hazard?", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF1A1A2E))
+                Text("Report flooded roads or curfew to initiate manual review.", fontSize = 12.sp, color = Color.Gray, lineHeight = 16.sp)
+            }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            // The Button
+            Button(
+                onClick = onReportClick,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Text("Report", fontWeight = FontWeight.Bold, fontSize = 13.sp)
             }
         }
     }
 }
-
 @Composable
 fun FirstTimeActivationCard(onActivate: () -> Unit) {
     Card(
@@ -536,7 +776,7 @@ fun ManualClaimDialog(
 ) {
     var description by remember { mutableStateOf("") }
     var selectedHazard by remember { mutableStateOf("Flood / Waterlogging") }
-    val hazards = listOf("Flood / Waterlogging", "Extreme Heatwave", "Dark Store Curfew", "Vehicle Breakdown")
+    val hazards = listOf("Flood / Waterlogging", "Extreme Heatwave", "Curfews/Government", "Others")
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -588,6 +828,49 @@ fun ManualClaimDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Cancel", color = Color.Gray)
+            }
+        }
+    )
+}
+
+@Composable
+fun TermsDialog(onAccept: () -> Unit, onDecline: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDecline,
+        containerColor = Color.White,
+        title = { 
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Security, contentDescription = null, tint = Color(0xFF5B2D8E))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Terms of Protection", fontWeight = FontWeight.Bold, color = Color(0xFF1A1A2E), fontSize = 18.sp)
+            }
+        },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text("1. Parametric Triggers", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("Payouts are triggered automatically when IMD or independent weather APIs confirm conditions exceed the severe threshold in your designated H3 Hexagon.", fontSize = 12.sp, color = Color.Gray)
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text("2. Fraud Prevention", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("Using mock GPS locations, rooted devices, or submitting false manual claims will result in immediate suspension and forfeiture of the premium.", fontSize = 12.sp, color = Color.Gray)
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text("3. Payout Limits", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("Maximum daily coverage is capped at ₹800. This covers lost potential earnings and does not constitute vehicle or medical insurance.", fontSize = 12.sp, color = Color.Gray)
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onAccept,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5B2D8E)),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("I Accept", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDecline) {
+                Text("Decline", color = Color.Gray)
             }
         }
     )
