@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import com.example.winkit.data.AuthResult
 import com.example.winkit.data.SupabaseAuthHelper
 import kotlinx.coroutines.launch
+import com.example.winkit.utils.tr
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -90,7 +91,7 @@ fun LoginScreen(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Enter your registered number to get started with your active delivery coverage",
+                    text = tr("Enter your registered number to get started with your active delivery coverage"),
                     color = Color.White.copy(alpha = 0.8f),
                     fontSize = 14.sp,
                     lineHeight = 20.sp
@@ -157,7 +158,7 @@ fun LoginScreen(
                                     com.example.winkit.utils.AuthManager.saveWorkerId(context, resolvedWorkerId) 
                                     onLoginSuccess(resolvedWorkerId)
                                 } else {
-                                    Toast.makeText(context, "Invalid OTP. Use 123456 for demo.", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, tr("Invalid OTP. Use 123456 for demo."), Toast.LENGTH_SHORT).show()
                                 }
                             }
                         }
@@ -227,7 +228,7 @@ private fun LoginPhoneView(
             if (isLoading) {
                 CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
             } else {
-                Text("Send OTP", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(tr("Send OTP"), fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.width(8.dp))
                 Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(20.dp))
             }
@@ -238,9 +239,9 @@ private fun LoginPhoneView(
         // ── Sign Up Link ───────────────────────────────────────────────────
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             Row {
-                Text("New here? ", color = Color.DarkGray, fontSize = 13.sp)
+                Text(tr("New here? "), color = Color.DarkGray, fontSize = 13.sp)
                 Text(
-                    "Sign Up",
+                    tr("Sign Up"),
                     color = Color(0xFF0A2A59),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
@@ -250,7 +251,7 @@ private fun LoginPhoneView(
             Spacer(modifier = Modifier.height(8.dp))
 
           Text(
-                text = "Terms of Service  •  Privacy Policy", 
+                text = tr("Terms of Service  •  Privacy Policy"), 
                 color = Color(0xFF0A2A59), // Made it blue so it looks clickable
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
@@ -297,7 +298,7 @@ private fun LoginOtpView(
             shape = RoundedCornerShape(8.dp),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
-            placeholder = { Text("Enter 6-digit OTP", color = Color.LightGray) },
+            placeholder = { Text(tr("Enter 6-digit OTP"), color = Color.LightGray) },
             colors = OutlinedTextFieldDefaults.colors(
                 unfocusedBorderColor = Color.LightGray,
                 focusedBorderColor = Color(0xFF0A2A59)
@@ -314,7 +315,7 @@ private fun LoginOtpView(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             Text("Sent to +91 $phoneNumber ", color = Color.Gray, fontSize = 12.sp)
             Text(
-                "Edit",
+                tr("Edit"),
                 color = Color(0xFF0A2A59),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
@@ -337,7 +338,7 @@ private fun LoginOtpView(
             if (isLoading) {
                 CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
             } else {
-                Text("Verify & Login", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(tr("Verify & Login"), fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.width(8.dp))
                 Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(20.dp))
             }
@@ -354,21 +355,21 @@ fun TermsDialog(onAccept: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFF0A2A59))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Terms & Privacy Policy", fontWeight = FontWeight.Bold, color = Color(0xFF1A1A2E), fontSize = 18.sp)
+                Text(tr("Terms & Privacy Policy"), fontWeight = FontWeight.Bold, color = Color(0xFF1A1A2E), fontSize = 18.sp)
             }
         },
         text = {
             Column(modifier = Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
-                Text("1. User Agreement", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text("By logging in, you agree to WinkIT's platform terms, including GPS telemetry tracking for parametric insurance verification.", fontSize = 12.sp, color = Color.Gray)
+                Text(tr("1. User Agreement"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(tr("By logging in, you agree to WinkIT's platform terms, including GPS telemetry tracking for parametric insurance verification."), fontSize = 12.sp, color = Color.Gray)
                 Spacer(modifier = Modifier.height(12.dp))
                 
-                Text("2. Data Privacy", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text("We securely store your phone number and location data exclusively for processing automated risk payouts and fraud prevention.", fontSize = 12.sp, color = Color.Gray)
+                Text(tr("2. Data Privacy"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(tr("We securely store your phone number and location data exclusively for processing automated risk payouts and fraud prevention."), fontSize = 12.sp, color = Color.Gray)
                 Spacer(modifier = Modifier.height(12.dp))
                 
-                Text("3. Financial Consent", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text("You authorize WinkIT to process premium deductions and route automated claim payouts directly to your linked wallet.", fontSize = 12.sp, color = Color.Gray)
+                Text(tr("3. Financial Consent"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(tr("You authorize WinkIT to process premium deductions and route automated claim payouts directly to your linked wallet."), fontSize = 12.sp, color = Color.Gray)
             }
         },
         confirmButton = {
@@ -377,7 +378,7 @@ fun TermsDialog(onAccept: () -> Unit) {
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0A2A59)),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text("I Accept & Continue", fontWeight = FontWeight.Bold)
+                Text(tr("I Accept & Continue"), fontWeight = FontWeight.Bold)
             }
         }
     )
