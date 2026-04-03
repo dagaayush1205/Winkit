@@ -41,7 +41,7 @@ export default function ConfigModule() {
                 type="range" min="10" max="100" step="5" value={rainThreshold} onChange={(e) => setRainThreshold(e.target.value)}
                 className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
               />
-              <p className="text-[10px] text-slate-400 mt-2">Payouts auto-trigger when OpenWeatherMap reports rain > {rainThreshold}mm.</p>
+              <p className="text-[10px] text-slate-400 mt-2">Payouts auto-trigger when OpenWeatherMap reports rain &gt; {rainThreshold}mm.</p>
             </div>
           </div>
         </div>
