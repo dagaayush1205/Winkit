@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.example.winkit.utils.tr
 
 @Composable
 fun IntegrationScreen(onBack: () -> Unit, onNext: (String) -> Unit) {
@@ -56,10 +57,17 @@ fun IntegrationScreen(onBack: () -> Unit, onNext: (String) -> Unit) {
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Headers
-        Text("Link Your\nDelivery Profile", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF0A192F), lineHeight = 40.sp)
+        // 🔥 FIXED: Corrected string concatenation and tr() usage
+        Text(
+            text = tr("Link Your") + "\n" + tr("Delivery Profile"), 
+            fontSize = 32.sp, 
+            fontWeight = FontWeight.ExtraBold, 
+            color = Color(0xFF0A192F), 
+            lineHeight = 40.sp
+        )
+        
         Spacer(modifier = Modifier.height(8.dp))
-        Text("Select your primary platform to sync your active shifts and verify your identity.", color = Color.Gray, fontSize = 14.sp)
+        Text(tr("Select your primary platform to sync your active shifts and verify your identity."), color = Color.Gray, fontSize = 14.sp)
 
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -106,12 +114,11 @@ fun IntegrationScreen(onBack: () -> Unit, onNext: (String) -> Unit) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = 12.dp)) {
                             Icon(Icons.Default.CheckCircle, contentDescription = "Verified", tint = Color(0xFF006C7A))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Verified", color = Color(0xFF006C7A), fontWeight = FontWeight.Bold)
+                            Text(tr("Verified"), color = Color(0xFF006C7A), fontWeight = FontWeight.Bold)
                         }
                     } else {
                         Button(
                             onClick = {
-                                // "Real" Verification Logic
                                 if (partnerId.startsWith(if (selectedPlatform == "Zepto") "ZEP" else "BKT", ignoreCase = true)) {
                                     coroutineScope.launch {
                                         isVerifying = true
@@ -126,7 +133,7 @@ fun IntegrationScreen(onBack: () -> Unit, onNext: (String) -> Unit) {
                             modifier = Modifier.padding(end = 8.dp).height(36.dp)
                         ) {
                             if (isVerifying) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                            else Text("Verify")
+                            else Text(tr("Verify"))
                         }
                     }
                 }
@@ -135,14 +142,19 @@ fun IntegrationScreen(onBack: () -> Unit, onNext: (String) -> Unit) {
             if (isVerified) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Surface(
-                    color = Color(0xFFE0F2F1), // Light teal background
+                    color = Color(0xFFE0F2F1),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF006C7A), modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text("ID successfully verified with $selectedPlatform backend. Your active shifts will be synced automatically.", color = Color(0xFF004D40), fontSize = 12.sp)
+                        // 🔥 FIXED: Variable extraction for translation
+                        Text(
+                            text = tr("ID successfully verified with") + " $selectedPlatform " + tr("backend. Your active shifts will be synced automatically."), 
+                            color = Color(0xFF004D40), 
+                            fontSize = 12.sp
+                        )
                     }
                 }
             }
@@ -151,17 +163,17 @@ fun IntegrationScreen(onBack: () -> Unit, onNext: (String) -> Unit) {
         Spacer(modifier = Modifier.weight(1f))
 
         Button(
-    onClick = { onNext(partnerId) }, // Make sure partnerId is passed here
-    enabled = isVerified,
-    modifier = Modifier.fillMaxWidth().height(56.dp),
-    shape = RoundedCornerShape(16.dp),
-    colors = ButtonDefaults.buttonColors(
-        containerColor = Color(0xFF0A192F), 
-        disabledContainerColor = Color.LightGray
-    )
-) {
-    Text("Continue", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-}
+            onClick = { onNext(partnerId) },
+            enabled = isVerified,
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF0A192F), 
+                disabledContainerColor = Color.LightGray
+            )
+        ) {
+            Text(tr("Continue"), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
