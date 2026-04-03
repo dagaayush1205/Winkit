@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.winkit.data.NetworkModule
+import com.example.winkit.utils.tr
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,7 +58,7 @@ fun ActivePolicyScreen(workerId: String, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Policy Details", fontWeight = FontWeight.Bold) },
+                title = { Text(tr("Policy Details"), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -131,7 +132,7 @@ fun ActivePolicyScreen(workerId: String, onBack: () -> Unit) {
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("MAX DAILY COVERAGE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF8E8E9A))
+                                Text(tr("MAX DAILY COVERAGE"), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF8E8E9A))
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text("₹${policyDetails!!["coverage"]}", fontSize = 32.sp, fontWeight = FontWeight.Black, color = Color(0xFF5B2D8E))
                             }
@@ -139,7 +140,7 @@ fun ActivePolicyScreen(workerId: String, onBack: () -> Unit) {
                     }
                 }
             } else {
-                Text("No active policy found.", modifier = Modifier.align(Alignment.Center), color = Color.Gray)
+                Text(tr("No active policy found."), modifier = Modifier.align(Alignment.Center), color = Color.Gray)
             }
         }
     }

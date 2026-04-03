@@ -108,7 +108,14 @@ object Translator {
             "Name cannot be empty" to "नाम खाली नहीं हो सकता",
             "Invalid email format" to "अमान्य ईमेल प्रारूप",
             "Profile Updated Successfully" to "प्रोफ़ाइल सफलतापूर्वक अपडेट की गई",
-            "Update Failed" to "अपडेट विफल रहा"
+            "Update Failed" to "अपडेट विफल रहा",
+            "Ledger History" to "लेजर इतिहास",
+            "Wallet" to "वॉलेट",
+            "Wallet Balance" to "वॉलेट बैलेंस",
+            "Insurance Status" to "बीमा की स्थिति",
+            "Weekly Premium" to "साप्ताहिक प्रीमियम",
+            "Live Claim Automation" to "लाइव क्लेम ऑटोमेशन",
+            "Your hazard report is being verified by our team. Payouts process within 24hrs." to "आपके खतरे की रिपोर्ट हमारी टीम द्वारा सत्यापित की जा रही है। भुगतान 24 घंटे के भीतर संसाधित हो जाएगा।"
         ),
         "ta" to mapOf(
             "Wallet Balance" to "வாலட் இருப்பு",
@@ -161,7 +168,7 @@ object Translator {
             "Coverage" to "கவரேஜ்",
             "Active" to "செயலில் உள்ளது",
             "Live Risk Telemetry" to "நேரலை ஆபத்து டெலிமெட்ரி",
-            "3D Sync Active" to "3D ஒத்திசைவு செயலில் உள்ளது",
+            "3D Sync Active" to "3D ஒத்திசைவு",
             "Safe Zone" to "பாதுகாப்பான மண்டலம்",
             "High Risk" to "அதிக ஆபத்து",
             "Activate Now • ₹49/wk" to "இப்போதே தொடங்குங்கள் • ₹49/வாரம்",
@@ -203,7 +210,14 @@ object Translator {
             "We securely store your phone number and location data exclusively for processing automated risk payouts and fraud prevention." to "பேஅவுட்டுகளுக்காக உங்கள் தரவை நாங்கள் பாதுகாப்பாகச் சேமிக்கிறோம்.",
             "3. Financial Consent" to "3. நிதி ஒப்புதல்",
             "You authorize WinkIT to process premium deductions and route automated claim payouts directly to your linked wallet." to "கட்டணங்களைக் கழிக்கவும் பேஅவுட் செய்யவும் WinkIT ஐ அங்கீகரிக்கிறீர்கள்.",
-            "I Accept & Continue" to "ஏற்றுக்கொண்டு தொடரவும்"
+            "I Accept & Continue" to "ஏற்றுக்கொண்டு தொடரவும்",
+            "Ledger History" to "லெட்ஜர் வரலாறு",
+            "Wallet" to "வாலட்",
+            "Wallet Balance" to "வாலட் இருப்பு",
+            "Insurance Status" to "காப்பீட்டு நிலை",
+            "Weekly Premium" to "வாராந்திர பிரீமியம்",
+            "Live Claim Automation" to "நேரலை உரிமைகோரல் ஆட்டோமேஷன்",
+            "Your hazard report is being verified by our team. Payouts process within 24hrs." to "உங்கள் அபாய அறிக்கை எங்கள் குழுவால் சரிபார்க்கப்படுகிறது. பணம் செலுத்துதல் 24 மணிநேரத்திற்குள் செயல்படுத்தப்படும்."
         ),
         "kn" to mapOf(
             "Wallet Balance" to "ವಾಲೆಟ್ ಬ್ಯಾಲೆನ್ಸ್",
@@ -215,7 +229,6 @@ object Translator {
             "Trigger Relocation" to "ಸ್ಥಳಾಂತರವನ್ನು ಪ್ರಚೋದಿಸಿ",
             "Language" to "ಭಾಷೆ",
             "Log Out" to "ಲಾಗ್ ಔಟ್",
-
             "Your Policy Offer" to "ನಿಮ್ಮ ಪಾಲಿಸಿ ಆಫರ್",
             "Based on your risk profile, here is your weekly coverage plan." to "ನಿಮ್ಮ ಅಪಾಯದ ಪ್ರೊಫೈಲ್ ಆಧಾರದ ಮೇಲೆ, ನಿಮ್ಮ ಸಾಪ್ತಾಹಿಕ ಕವರೇಜ್ ಯೋಜನೆ ಇಲ್ಲಿದೆ.",
             "This policy covers income loss only. It does not cover vehicle damage or medical expenses." to "ಈ ಪಾಲಿಸಿಯು ಆದಾಯದ ನಷ್ಟವನ್ನು ಮಾತ್ರ ಒಳಗೊಂಡಿರುತ್ತದೆ. ಇದು ವಾಹನ ಹಾನಿ ಅಥವಾ ವೈದ್ಯಕೀಯ ವೆಚ್ಚಗಳನ್ನು ಒಳಗೊಂಡಿರುವುದಿಲ್ಲ.",
@@ -241,7 +254,6 @@ object Translator {
             "Activation failed" to "ಸಕ್ರಿಯಗೊಳಿಸುವಿಕೆ ವಿಫಲವಾಗಿದೆ",
             "Routing to Adyar. ₹150 Bonus Locked!" to "ಅಡ್ಯಾರ್‌ಗೆ ಹೋಗುತ್ತಿದೆ. ₹150 ಬೋನಸ್ ಲಾಕ್ ಆಗಿದೆ!",
             "Error accepting route:" to "ಮಾರ್ಗವನ್ನು ಸ್ವೀಕರಿಸುವಲ್ಲಿ ದೋಷ:",
-
             "Terms & Conditions" to "ನಿಯಮಗಳು ಮತ್ತು ಷರತ್ತುಗಳು",
             "Coverage" to "ಕವರೇಜ್",
             "Active" to "ಸಕ್ರಿಯ",
@@ -298,7 +310,14 @@ object Translator {
             "Name cannot be empty" to "ಹೆಸರು ಖಾಲಿಯಾಗಿರಬಾರದು",
             "Invalid email format" to "ಅಮಾನ್ಯ ಇಮೇಲ್ ಸ್ವರೂಪ",
             "Profile Updated Successfully" to "ಪ್ರೊಫೈಲ್ ಯಶಸ್ವಿಯಾಗಿ ನವೀಕರಿಸಲಾಗಿದೆ",
-            "Update Failed" to "ನವೀಕರಣ ವಿಫಲವಾಗಿದೆ"
+            "Update Failed" to "ನವೀಕರಣ ವಿಫಲವಾಗಿದೆ",
+            "Ledger History" to "ಲೆಡ್ಜರ್ ಇತಿಹಾಸ",
+            "Wallet" to "ವಾಲೆಟ್",
+            "Wallet Balance" to "ವಾಲೆಟ್ ಬ್ಯಾಲೆನ್ಸ್",
+            "Insurance Status" to "ವಿಮೆ ಸ್ಥಿತಿ",
+            "Weekly Premium" to "ಸಾಪ್ತಾಹಿಕ ಪ್ರೀಮಿಯಂ",
+            "Live Claim Automation" to "ಲೈವ್ ಕ್ಲೈಮ್ ಆಟೊಮೇಷನ್",
+            "Your hazard report is being verified by our team. Payouts process within 24hrs." to "ನಿಮ್ಮ ಅಪಾಯದ ವರದಿಯನ್ನು ನಮ್ಮ ತಂಡವು ಪರಿಶೀಲಿಸುತ್ತಿದೆ. ಪಾವತಿಗಳು 24 ಗಂಟೆಗಳ ಒಳಗೆ ಪ್ರಕ್ರಿಯೆಯಾಗುತ್ತವೆ."
         )
     )
 }

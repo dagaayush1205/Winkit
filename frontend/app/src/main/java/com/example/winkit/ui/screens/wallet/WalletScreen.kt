@@ -23,6 +23,8 @@ import com.example.winkit.ui.components.ShiftSafeBottomNav
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.platform.LocalContext
+import com.example.winkit.utils.tr
+
 @Composable
 fun WalletScreen(
     workerId: String, 
@@ -92,7 +94,7 @@ fun WalletScreen(
             }
             
             item {
-                Text("Ledger History", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1A1A), modifier = Modifier.padding(top = 8.dp))
+                Text(tr("Ledger History"), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1A1A), modifier = Modifier.padding(top = 8.dp))
             }
 
             items(viewModel.transactions, key = { it.id }) { tx ->
@@ -112,7 +114,7 @@ fun WalletBalanceCard(balance: Int, earnings: Int, payouts: Int) {
         Column(modifier = Modifier.padding(24.dp)) {
             // Header
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Wallet", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text(tr("Wallet"), color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Surface(color = Color.White.copy(alpha = 0.1f), shape = CircleShape) {
                     Icon(Icons.Default.Bolt, contentDescription = null, tint = Color(0xFFFFD54F), modifier = Modifier.padding(8.dp).size(20.dp))
                 }
@@ -122,7 +124,7 @@ fun WalletBalanceCard(balance: Int, earnings: Int, payouts: Int) {
 
             // Main Balance
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                Text("Wallet Balance", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
+                Text(tr("Wallet Balance"), color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
                 Text("₹$balance", color = Color.White, fontSize = 48.sp, fontWeight = FontWeight.Black)
             }
 
@@ -144,7 +146,7 @@ fun WalletBalanceCard(balance: Int, earnings: Int, payouts: Int) {
             ) {
                 Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column {
-                        Text("Insurance Status", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
+                        Text(tr("Insurance Status"), color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF00E676), modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(4.dp))
@@ -152,7 +154,7 @@ fun WalletBalanceCard(balance: Int, earnings: Int, payouts: Int) {
                         }
                     }
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("Weekly Premium", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
+                        Text(tr("Weekly Premium"), color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
                         Text("₹49/wk", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                 }
@@ -196,7 +198,7 @@ fun LiveClaimTracker(currentStep: Int) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Autorenew, contentDescription = null, tint = Color(0xFF074768))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Live Claim Automation", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF1A1A2E))
+                Text(tr("Live Claim Automation"), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF1A1A2E))
             }
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -322,7 +324,7 @@ fun PendingReviewBanner(count: Int) {
                     fontSize = 14.sp
                 )
                 Text(
-                    text = "Your hazard report is being verified by our team. Payouts process within 24hrs.", 
+                    text = tr("Your hazard report is being verified by our team. Payouts process within 24hrs."), 
                     color = Color(0xFFE65100).copy(alpha = 0.8f), 
                     fontSize = 12.sp
                 )
