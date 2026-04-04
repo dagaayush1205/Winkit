@@ -114,14 +114,14 @@ It operates as a **closed-loop ecosystem** where:
 
 ## 1. Mobile App — The Sensor Layer
 
-The Android app (Jetpack Compose) is not just UI — it is a **high-fidelity data collection system**.
+The Android app (Jetpack Compose) is not just a UI - **it is a high-fidelity data collection node.** To ensure financial integrity and prevent reverse-engineering, we implemented a "Thin-Client" (Zero-Trust) architecture where **the app performs zero mathematical or risk-based computation.**
 
 ### What it does:
 
 - User onboarding (OTP + profile + UPI)
-- Continuous GPS + sensor telemetry
-- Real-time risk visualization (H3 hex grid)
-- Policy + wallet management
+- Continuous GPS + sensor telemetry- for audit-grade verification.
+- Real-time risk visualization (H3 hex grid)- "High Risk" zones and safe corridors in 3D
+- Policy + wallet management- automated "Drip-Feed" payouts reconciled via the **Supabase ledger.**
 
 ### Key Concepts:
 
@@ -131,6 +131,8 @@ The Android app (Jetpack Compose) is not just UI — it is a **high-fidelity dat
 - No computation. It fetched everything from the middle-layer-> Supabase
 - It is User Friendly with features like multi-language enabler
 
+<img width="7992" height="5110" alt="OAK-D Lite VPU Detection-2026-04-04-084511" src="https://github.com/user-attachments/assets/e3460937-b4ba-48bd-a4c7-0f647c719c52" />
+
 > Think of the app as:  
 > **"A live sensor node feeding reality into the insurance engine"**
 
@@ -138,10 +140,9 @@ The Android app (Jetpack Compose) is not just UI — it is a **high-fidelity dat
 
 ## 2. Backend — The Autonomous Underwriter
 
-This is where WinkIT becomes **different from traditional insurance**.
+This is where WinkIT separates itself from traditional InsurTech. We replaced human claims adjusters with **deterministic, asynchronous Python daemons.**
 
 ### Core Idea:
-
 No humans. No manual claims.  
 Only **data → decisions → execution**
 
@@ -149,76 +150,57 @@ Only **data → decisions → execution**
 
 ### A. Risk Detection Engine
 
-Runs every hour.
+Runs asynchronously every **60 minutes**.
 
-**Inputs:**
-- Weather APIs
-- Traffic APIs
-- News / social signals
+* **Inputs:** OpenWeather APIs, TomTom Traffic APIs, Local RSS / News Feeds.
+* **Process:** 1. Agentic LLM analyzes the unstructured situation.
+  2. Assigns Risk Category, Base Score, and extracts the affected H3 Hex epicenter.
+  3. **Reality Check Layer** validates the LLM assumption against physical traffic data.
 
-**Process:**
-1. LLM analyzes situation  
-2. Assigns:
-   - Risk category  
-   - Risk score  
-   - Affected areas (H3 hexes)  
-3. Reality Check Layer validates:
-   - Traffic vs disruption  
-   - Weather vs location  
-   - Historical patterns  
+> **Result:** Prevents hallucinations and ensures actuarial safety.
 
-Prevents hallucinations  
-Ensures actuarial safety  
+#### LLM Underwriter (Why Cerebras + Llama 3.1?)
+We utilize LLMs for risk categorization because unstructured civic data (news, Twitter) cannot be parsed by traditional APIs.
 
-LLM Underwriter (Why Cerebras Llama 3.1?)
+```text
+Why it works (Example Scenario):
+├─ Input: "Flooding reported in Velachery + traffic at 15% + rain 85%"
+├─ Output: {category: "ARTERIAL_BLOCKAGE", confidence: 0.92, duration: "4hrs"}
+└─ Benefit: 10x cheaper inference than GPT-4, delivering instant structuration.
 
-Using LLM for risk categorization because:
-├─ Can parse unstructured data (RSS, Twitter, news)
-├─ Gives confidence scores (not just binary)
-└─ 10x cheaper inference than GPT-4
+Safety Layer (Preventing Hallucinations):
+├─ Physical validation tier overrides the LLM if physics disagree.
+├─ If LLM says "TOTAL SHUTDOWN" but TomTom Traffic is flowing at 40% speed...
+└─ OVERRIDE: Risk downgraded to 0.0. Ensures we never over-commit financially.
+```
 
-Why it works (with examples):
-Input: "Flooding reported in downtown + traffic at 15% + rain 85%"
-Output: {category: "ARTERIAL_BLOCKAGE", confidence: 0.92, duration: 4hrs}
+<img width="334" height="644" alt="Screenshot from 2026-04-04 14-23-31" src="https://github.com/user-attachments/assets/cc3bbe6c-a1ed-44fa-a96c-788caa16e470" />
 
-Safety Layer: Physical validation tier prevents hallucinations
-├─ If traffic says 40% but LLM says "TOTAL SHUTDOWN" → downgrade
-└─ Ensures we never over-commit financially
+#### Why H3 Hexagons (Not Just Lat/Lng)?
+Traditional geofencing relies on comparing raw floating-point coordinates (e.g., 12.9716°N vs 12.9710°N), which leads to boundary inconsistencies and false negatives.
 
-Why H3 Hexagons (Not Just Lat/Lng)?
-
-Traditional: Compare worker coordinates (12.9716°N, 77.5946°E) 
-to disaster zone (12.9710°N, 77.5950°E)
-Problem: 0.0006° difference = could match or not match
-         Floating-point errors cause inconsistency
-
-WinkIT: Convert both to H3 ID "88419551d5dffff"
-Result: Deterministic, no floating-point errors
-        Hierarchical (can drill-down: city → block → street)
-        O(1) matching (instant verification)
-
-Benefit: Zero disputes about "were you really in the zone?"
+* **The WinkIT Solution:** Convert both rider and disaster zones into Uber's H3 spatial indexes (e.g., `88419551d5dffff`).
+* **The Result:** Deterministic, O(1) string-matching. Zero disputes about *"were you really in the zone?"*
 
 ---
 
 ### B. Dynamic Pricing Engine
 
-Base: All premiums start at ₹30
-Risk Multiplier: Adjusted 0.6x → 2.4x based on real-time hazard
-Final: Capped using asymptotic function to prevent unlimited scaling
+To ensure we never breach the Guidewire constraint of ₹50/week, we abandoned linear pricing and implemented an Asymptotic Pricing Curve.
 
-Formula: Premium = 49 × (1 - e^(-risk_score))
+* **Base:** All premiums start at a ₹20 floor.
+* **Risk Multiplier:** Adjusted 0.6x → 2.4x based on real-time hazard data.
+* **Formula:** $Premium = 49 \times (1 - e^{-x})$ (where $x$ is the risk score).
 
-Examples:
+**Examples:**
+```text
 ├─ No disruptions: ₹20 (0.4x multiplier)
 ├─ Light rain: ₹28 (0.7x multiplier)  
 ├─ Flooding: ₹45 (1.5x multiplier)
 └─ Total shutdown: ₹48 (2.4x multiplier, capped)
+```
 
-Why this works: Workers get cheaper insurance on safe days, 
-but we never charge >₹50 (affordability floor).### Result:
-- Low risk → cheaper insurance  
-- High risk → higher but capped (~₹50)
+**Why this works:** Workers get cheaper insurance on safe days (low risk), but we never charge more than ~₹50 on dangerous days (high risk), successfully honoring the affordability floor.
 
 ---
 
@@ -226,62 +208,51 @@ but we never charge >₹50 (affordability floor).### Result:
 
 Runs every **30 seconds**.
 
-### What it does:
-
-1. Finds active disruptions  
-2. Matches workers in affected H3 zones  
-3. Checks active policy  
-4. Calculates payout  
+**What it does:**
+1. Finds active disruptions.
+2. Matches workers in affected H3 zones.
+3. Checks if the user holds an `ACTIVE` policy.
+4. Calculates the authorized payout.
 
 ---
 
-### Drip-Feed Payout Model
+### D. Drip-Feed Payout Model
 
-Instead of lump sum payouts:
-Weekly Premium → Split into hourly payouts
-
-
+Instead of lump sum payouts: Weekly Premium → Split into hourly payouts
 Example:
 - ₹45/week → ₹0.268/hour  
 - Adjusted by risk multiplier  
 
 ### Why it matters:
-- Prevents system collapse  
-- Controls payouts  
-- Reduces fraud risk  
+Prevents system collapse. If the flood clears after 2 hours, the payout halts, rescuing the remaining capital. Reduces fraud incentive and strictly limits Maximum Probable Loss (MPL).
 
 ---
 
 ## 3. Fraud Fortress — Trust Layer
 
-Every payout is verified using **real-world physics + device integrity**.
+Every payout is securely verified using a combination of **real-world physics + device integrity**. 
 
-### Multi-layer checks:
+### Multi-Layer Checks
 
-#### Device Security
-- Mock location detection  
-- Root/jailbreak detection  
-- Play Integrity API  
-
-#### Physics Validation
-- Speed vs IMU movement  
-- GPS presence while moving  
-
-#### GNSS Authenticity
-- Satellite signal noise patterns  
-- Detects spoofing  
+* **Device Security:** Enforces mock location detection, root/jailbreak detection, and Google Play Integrity API validation.
+* **Physics Validation:** Cross-references speed against IMU (accelerometer/gyroscope) movement and ensures continuous GPS presence while moving.
+* **GNSS Authenticity:** Analyzes satellite signal noise patterns to instantly detect and neutralize GPS spoofing attempts.
 
 ---
 
-### Verdict Outcomes:
+### Verdict Outcomes
 
-- ✅ CLEAN → payout approved  
--  PENDING → wait  
-- ❌ FRAUD → rejected  
+* ✅ **CLEAN** → Payout instantly approved.
+* ⏳ **PENDING** → Wait for secondary validation.
+* ❌ **FRAUD** → Claim rejected and flagged.
 
 ---
 
 ## 4. Supabase — The Financial Brain
+
+<img width="1499" height="837" alt="supabase-schema-twkzvrgbifnnzdptiiut" src="https://github.com/user-attachments/assets/546b4e2a-e70e-40fb-968a-44859f512229" />
+
+<img width="1519" height="928" alt="Screenshot from 2026-04-04 14-31-05" src="https://github.com/user-attachments/assets/b6a9b654-8165-416d-b24a-80ad154e77e4" />
 
 Acts as:
 - PostgreSQL database  
@@ -293,7 +264,11 @@ Acts as:
 - `workers` → user data  
 - `weekly_policies` → active coverage  
 - `raw_gps_telemetry` → sensor data  
-- `claims_and_payouts` → escrow + payouts  
+- `claims_and_payouts` → escrow + payouts
+
+<img width="811" height="575" alt="Screenshot from 2026-04-04 14-28-18" src="https://github.com/user-attachments/assets/156dfa3c-397c-40d7-8b16-bef4b88cd980" />
+
+
 
 ---
 
@@ -334,7 +309,6 @@ Runs every **30 seconds**.
 
 ## COMPLETE End-to-End Lifecycle
 ```
-```
 User buys policy
 ↓
 Backend detects disruption
@@ -353,8 +327,11 @@ Payout released via UPI
 ↓
 Wallet updates instantly
 ```
+---
+### How it inter-relates
 
-```
+
+<img width="8191" height="6652" alt="OAK-D Lite VPU Detection-2026-04-04-084255" src="https://github.com/user-attachments/assets/e7cf877f-4176-4a71-8a52-4bbc6720e677" />
 
 ## WHY THIS? V/s Alternatives
 
