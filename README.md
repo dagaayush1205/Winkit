@@ -399,6 +399,21 @@ Parametric insurance is useless if the rider has to wait weeks for the capital t
 > **The FinTech Flex:** The payout engine (`payout_worker.py`) is completely decoupled from the Risk Oracle. By separating the *decision to pay* from the *execution of payment*, we eliminate race conditions and ensure strict financial idempotency.
 
 ---
+## 6. Winklytics — The Actuarial Command Center
+
+If the Python Backend is the brain and Supabase is the ledger, **Winklytics** is the eye in the sky. Built with Vite, this is our internal operational dashboard designed for the aggregator's risk management team. 
+
+> **The Actuarial Flex:** We don't just process claims blindly. Winklytics provides real-time portfolio solvency monitoring, ensuring the platform never scales to bankruptcy.
+
+### Core Dashboard Features:
+* **Global H3 Telemetry:** A live, macro-view of all active riders across the city, mapped against real-time weather and civic hazard hexes.
+* **Live Burning Cost Rate (BCR):** Continuously calculates our net claim exposure relative to premium liquidity. 
+* **The 85% Circuit Breaker:** If a catastrophic event pushes the portfolio BCR past 85%, Winklytics automatically suspends new policy enrollments in the affected H3 zones to protect the capital pool.
+* **Fraud Fortress Feed:** A live, scrolling feed of rejected claims. It details the exact physics vector (e.g., *GNSS Spoofing*, *IMU Teleportation*) that triggered the rejection and tracks the automatic deductions to the rider's Trust Score.
+* **Capital Protection Metrics:** Tracks the "Liquidity Saved" delta—showing investors exactly how much capital was preserved by using our hourly Drip-Feed Escrow model instead of traditional lump-sum payouts.
+
+##### **NOTE**- The authentication and some buttons are mock but the data is being pulled real time from supabase. The complete lifecycle will be implemented in Phase-3
+---
 
 ### The Execution Flow (The "Last Mile")
 Running as an isolated, asynchronous daemon on DigitalOcean every 30 seconds, the Payout Worker handles the final mile of the transaction.
@@ -522,6 +537,92 @@ flowchart TD
     class API,RZ ext
 ```
 --- 
+## Directory Structure
+```
+.
+├── config.py
+├── engine
+│   └── dynamic_pricing
+│       └── pricing_engine.py
+├── fraud_evaluator.py
+├── frontend
+│   ├── app
+│   │   ├── build
+│   │   ├── build.gradle.kts
+│   │   ├── proguard-rules.pro
+│   │   └── src
+│   ├── build.gradle.kts
+│   ├── gradle
+│   │   ├── libs.versions.toml
+│   │   └── wrapper
+│   ├── gradlew
+│   ├── gradlew.bat
+│   └── settings.gradle.kts
+├── payment-backend
+├── payout_worker.py
+├── Phase1_README.md
+├── README.md
+├── requirements.txt
+├── services
+│   ├── civic_risk_agent.py
+│   └── weather_api_client.py
+├── trigger.py
+├── WinkIt
+└── winklytics
+    ├── index.html
+    ├── README.md
+    ├── src
+    │   ├── App.jsx
+    │   ├── components
+    │   ├── index.css
+    │   ├── lib
+    │   ├── main.jsx
+    │   └── supabase.js
+    ├── vite.config.js
+```
+---
+## Live Implementation & Testing Guide
+
+Want to see WinkIT in action? Here is how judges and evaluators can interact with our Phase 2 deployment across all four layers of the stack.
+
+### 1. Winklytics Command Center (Web)
+Our operational dashboard is deployed and live.
+* **Live URL:** [https://winkitlytics.vercel.app/](https://winkitlytics.vercel.app/)
+* **Evaluator Note:** To remove friction for the judging panel, the **authentication layer is currently mocked**. You can bypass login to immediately view the dashboard. However, please note that all maps, risk metrics, and the Fraud Fortress feed are pulling **real-time, live data** directly from our Supabase ledger.
+
+### 2. WinkIT Rider App (Android)
+To test the sensor layer and UI, you have two options:
+
+**Option A: Quick Test (Recommended)**
+* Download the `app-debug.apk` directly from our **[GitHub Releases](#)** page and install it on your Android device.
+
+**Option B: Build from Source**
+If you wish to evaluate the Kotlin architecture:
+1. Clone the repository: `git clone https://github.com/your-repo/winkit-android`
+2. Open the project in **Android Studio** (Ladybug or newer recommended).
+3. Create or open the `local.properties` file in the root directory and append your environment variables:
+   ```properties
+     OPENWEATHER_API_KEY="your openweather api key"
+    SUPABASE_URL="your supabase url"
+    SUPABASE_ANON_KEY="your supabase anon key"
+    GEMINI_API_KEY="your gemini api key"
+   ```
+   **NOTE**- Since we are unable to share supabase url and key, we would love for you to use your own key, if needed, set up the database using this doc-
+   
+5. Sync the Gradle project.
+6. **Crucial Setup Note:** Please deploy the application to a Physical Android Device rather than a desktop emulator. The WinkIT Fraud Fortress strictly requires authentic IMU variance and GPS telemetry; an emulator will trigger a "Mock Location / Spoofing" rejection state!
+
+### 3. Autonomous Python Backend
+Our core actuaries, LLM pipelines, and payout daemons are currently deployed and running natively on a DigitalOcean Droplet.
+
+    Security Protocol: Following zero-trust security best practices, we cannot publicly expose our Droplet IP address or SSH credentials to protect our production database keys and financial API secrets.
+
+    Live Verification: To verify the backend execution, please watch our Live Backend Execution Video. In this video, we SSH into the server, trigger a simulated monsoon event, and show the live terminal logs of the daemons matching H3 hexes, generating ESCROW claims, and executing the Razorpay UPI transfers.
+
+### 4. Supabase Ledger
+Our PostgreSQL database is live and fully integrated. You do not need to run this locally. Any policy purchase made on the Android App, or any payout executed by the Python Backend, will reflect instantaneously on the Vercel Winklytics dashboard via real-time WebSocket syncing.
+
+---
 
 ## Phase 1 to Phase 2 Evolution (Addressing Domain Gaps)
 
@@ -550,9 +651,19 @@ Traditional insurers and digital-first disruptors cannot easily replicate the Wi
 
 ---
 
-###  System Deep-Dive- The CPU, Disk and Memory Usage expected while deploying (As Tested by Us)
+### 🖥️ System Deep-Dive: Infrastructure Overhead & Resource Utilization
 
-We designed WinkIT to operate with **extremely low infrastructure overhead**, enabling micro-insurance at scale. Here are a few screenshots we have collected for the same.
+We designed WinkIT to operate with **extremely low infrastructure overhead**, proving that parametric micro-insurance can be executed at scale without bloated enterprise servers. By utilizing a headless, event-driven architecture and offloading state management to Supabase, our compute footprint remains minimal even during active claim cycles.
+
+**Performance Baselines (As Tested):**
+To validate our unit economics and OPEX models, we monitored the backend Python daemons during standard execution and stress-test cycles. 
+
+* **Compute (CPU):** Idles at **~5%**, peaking at only **28%** during concurrent H3 coordinate matching and Razorpay API execution.
+* **Memory (RAM):** Sustained memory footprint of approximately **400 MB** (steady at 40% utilization), ensuring we can comfortably run multiple containerized oracles on a basic tier virtual machine (e.g., a $5/mo DigitalOcean droplet).
+* **Storage/Disk:** Negligible disk I/O. Disk usage remained flat at **~12%** with zero bloat. The backend acts as a stateless conduit, routing decisions directly to the PostgreSQL ledger and purging raw GPS telemetry instantly to comply with data privacy standards.
+
+**Telemetry Snapshots:**
+Below are the live resource utilization graphs captured during our deployment, confirming the sustainable, ultra-low operational cost of the WinkIT engine:
 
 ![WhatsApp Image 2026-04-04 at 14 30 19](https://github.com/user-attachments/assets/d51009a5-09bd-43bf-88c9-98dfd3899669)
 ![WhatsApp Image 2026-04-04 at 14 31 45](https://github.com/user-attachments/assets/ed8c1f92-8a04-47d6-a38c-d1fe906b663a)
