@@ -3,7 +3,7 @@
 
 ## **Quick Links:**
 * **[Watch the Phase 2 Pitch and Live DB Sync Video](#)** *(Insert Link Here)*
-* **[View our original Phase 1 Submission](PHASE1_README.md)**
+* **[View our original Phase 1 Submission](Phase1_README.md)**
 
 
 ## Executive Summary
