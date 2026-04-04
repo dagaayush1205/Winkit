@@ -314,10 +314,11 @@ graph TD
     C --> D[Extract H3 Epicenter]
     D --> E{{TomTom API Reality Check}}
     
-    E -->|Traffic Flow 40 Percent| F[OVERRIDE: Downgrade to 0.0]
-    E -->|Jam Confirmed| G[✅ VALIDATED: Keep LLM Score]
+    E -->|Traffic > 40%| F[OVERRIDE: Downgrade to 0.0]
+    E -->|Jam Confirmed| G[VALIDATED: Keep LLM Score]
     
-    F and G --> H((Final Civic Probability))
+    F --> H((Final Civic Probability))
+    G --> H
     
     style B fill:#5B2D8E,color:#fff
     style E fill:#F8CB46,color:#000
