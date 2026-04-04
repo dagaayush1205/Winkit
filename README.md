@@ -1,5 +1,12 @@
 # WinkIt (Phase 2 Submission)
 ### *Providing instant blink-surance for the Gig Economy.*
+> **👋 Want implementation first?** 
+>
+> Jump straight to **[Section 9 — How to Run](#live-implementation-and-testing-guide)** and **[Section 10 — What happens in the Backend, really?](#the-data-lifecycle)**.
+> 
+> If not, this README is a complete deep dive into our solution and the "brain" behind it. You get to see first-hand the engineering rigor put into this product, the executive decisions made, and the complete actuarial thought process.
+
+---
 
 ## **Quick Links:**
 * **[Watch the Phase 2 Pitch and Live DB Sync Video](#)** *(Insert Link Here)*
@@ -33,6 +40,7 @@ WinkIT is an autonomous Spatio-Temporal Parametric Engine designed to solve the 
 - [Code and Deployment](#directory-structure)
     - [Directory Structure](#directory-structure)
     - [Live Testing Guide](#live-implementation-and-testing-guide)
+- [What ACTUALLY happens in the backend real-time?](#the-data-lifecycle)
 - [Business Strategy and Details](#business-strategy-and-details)
     - [Competitive Moat](#competitive-moat-why-we-win)
     - [Infrastructure and Performance](#system-deep-dive-infrastructure-overhead-and-resource-utilization)
@@ -655,6 +663,9 @@ To test the sensor layer and UI, you have two options:
 
 **Option A: Quick Test (Recommended)**
 * Download the `app-debug.apk` directly from our **[GitHub Releases](#)** page and install it on your Android device.
+* **Evaluator Login Credentials:**
+  * **The Pre-Configured Profile (Fast Track):** To instantly view a fully populated profile with an established Trust Score and history, log in using Phone: `9876543210` and Platform ID: `ZEP-1001` (Rahul Sharma).
+  * **The Cold-Start Experience:** To test the onboarding flow and our introductory premium generation, log in with your own phone number and create a unique mock Platform ID (e.g., `BLNK-9999`).
 
 **Option B: Build from Source**
 If you wish to evaluate the Kotlin architecture:
@@ -674,11 +685,55 @@ If you wish to evaluate the Kotlin architecture:
 
 ### 3. Autonomous Python Backend
 Our core actuaries, LLM pipelines, and payout daemons are currently deployed and running natively on a DigitalOcean Droplet.
-- Security Protocol: Following zero-trust security best practices, we cannot publicly expose our Droplet IP address or SSH credentials to protect our production database keys and financial API secrets.
+- Security Protocol: Following zero-trust security best practices, we **cannot publicly expose our Droplet IP address or SSH credentials** to protect our production database keys and financial API secrets.
 - Live Verification: To verify the backend execution, please watch our Live Backend Execution Video. In this video, we SSH into the server, trigger a simulated monsoon event, and show the live terminal logs of the daemons matching H3 hexes, generating ESCROW claims, and executing the Razorpay UPI transfers.
+  
+
+https://github.com/user-attachments/assets/d2d6ea28-b91f-4d8f-8388-1be7cf9a7a8d
+
+
 
 ### 4. Supabase Ledger
 Our PostgreSQL database is live and fully integrated. You do not need to run this locally. Any policy purchase made on the Android App, or any payout executed by the Python Backend, will reflect instantaneously on the Vercel Winklytics dashboard via real-time WebSocket syncing.
+
+---
+## What happens in the Backend Real Time
+### The Data Lifecycle
+When you test the Android app, here is exactly how our Python daemons and Supabase ledger interact in the background:
+
+**1. Onboarding (`workers` table)**
+The moment you log in via OTP, your profile and Platform ID are securely injected into the `workers` table. This acts as the genesis for your relational data profile.
+
+**2. The High-Frequency Pricing Daemon (`worker_charges` table)**
+We run a background pricing cron that sweeps every **2 seconds**. It immediately detects new users, calculates their initial baseline premium (or dynamic premium if they have history), and injects a temporary quote into the `worker_charges` table. 
+
+**3. Policy Activation (`weekly_policies` table)**
+When you see the "Swipe to Pay" screen in the UI, the app is reading directly from `worker_charges`. Upon a successful Razorpay gateway callback, that charge is converted into a legally binding contract and pushed to the `weekly_policies` table. This is the table that the system evaluates every 7 days for renewals.
+
+**4. The Telemetry Cycle (Trust Score Auditing)**
+While logged into the app, our background worker initiates a telemetry cycle **every 2 minutes, capturing exactly 10 seconds of raw GPS and IMU data.** This data is dumped into the `raw_gps_telemetry` table. The Fraud Fortress continuously audits these 10-second bursts; if your physics are clean, your Trust Score remains intact. If anomalies are detected, your Trust Score drops, influencing your next weekly premium.
+
+**5. The Manual Fallback (`manual_claims` ➔ `claims_and_payouts`)**
+If a disruption is too hyper-local for the parametric oracle to catch (e.g., a localized tree fall), the rider can file a manual claim. 
+* This is instantly logged in the `manual_claims` table. 
+* Once the aggregator's backend team clicks "Approve" on the Winklytics dashboard, the record is automatically migrated to the `claims_and_payouts` table.
+* This migration triggers the Payout Engine, firing the Razorpay UPI API and reflecting the new balance in the rider's UI wallet.
+
+Here are few entries in the table, for worker- Rahul Sharma- ZEP-1001
+`workers`
+<img width="1432" height="74" alt="Screenshot from 2026-04-04 18-36-00" src="https://github.com/user-attachments/assets/9dc4b5f3-e661-4dda-af6d-f0c6527fd117" />
+
+`claims_and_payouts`
+<img width="1206" height="74" alt="Screenshot from 2026-04-04 18-36-28" src="https://github.com/user-attachments/assets/d8fb50db-87ba-4a39-88ec-ec5d502ba8eb" />
+
+`worker_charges`
+<img width="929" height="74" alt="Screenshot from 2026-04-04 18-36-55" src="https://github.com/user-attachments/assets/ee02b865-0d81-42d5-835a-ec6362bf45a3" />
+
+`worker_daily_activity`
+<img width="1474" height="54" alt="Screenshot from 2026-04-04 18-37-11" src="https://github.com/user-attachments/assets/7b5356c0-6ef0-459a-acbe-4fdad2b49bcd" />
+
+`weekly_policies`
+<img width="1501" height="40" alt="Screenshot from 2026-04-04 18-37-27" src="https://github.com/user-attachments/assets/1feadc9e-efd5-44ea-8e9d-b51b3cf8dafe" />
 
 ---
 ## Business Strategy and Details
