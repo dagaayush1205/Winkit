@@ -697,7 +697,6 @@ Our core actuaries, LLM pipelines, and payout daemons are currently deployed and
 https://github.com/user-attachments/assets/5c6cee98-97e1-4b0c-aae2-406143c82a2f
 
 
-> **Note:** For the video, click on this link to view (open it in a new tab): [Video](https://drive.google.com/file/d/1wWwAwCw3jQkXqBrnbB-maKcrtQmSptbK/view?usp=sharing)
 
 ### 4. Supabase Ledger
 Our PostgreSQL database is live and fully integrated. You do not need to run this locally. Any policy purchase made on the Android App, or any payout executed by the Python Backend, will reflect instantaneously on the Vercel Winklytics dashboard via real-time WebSocket syncing.
