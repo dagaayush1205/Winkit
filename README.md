@@ -693,6 +693,10 @@ Our core actuaries, LLM pipelines, and payout daemons are currently deployed and
 - Security Protocol: Following zero-trust security best practices, we **cannot publicly expose our Droplet IP address or SSH credentials** to protect our production database keys and financial API secrets.
 - Live Verification: To verify the backend execution, please watch our Live Backend Execution Video. In this video, we SSH into the server, trigger a simulated monsoon event, and show the live terminal logs of the daemons matching H3 hexes, generating ESCROW claims, and executing the Razorpay UPI transfers.
 
+
+https://github.com/user-attachments/assets/5c6cee98-97e1-4b0c-aae2-406143c82a2f
+
+
 > **Note:** For the video, click on this link to view (open it in a new tab): [Video](https://drive.google.com/file/d/1wWwAwCw3jQkXqBrnbB-maKcrtQmSptbK/view?usp=sharing)
 
 ### 4. Supabase Ledger
