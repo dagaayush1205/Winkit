@@ -52,10 +52,11 @@ WinkIT is an autonomous Spatio-Temporal Parametric Engine designed to solve the 
 
 To truly understand WinkIT, you have to look past the Python daemons and PostgreSQL ledgers, and view the platform from the seat of a delivery bike. That is why we are taking you through a journey starting right at the end user.
 
-**Meet Rahul.** Rahul is a 24-year-old Zepto rider in Chennai. He relies entirely on his daily gig wages to pay rent. 
+**Meet Arjun.** Arjun is a 24-year-old Zepto rider in Chennai. He relies entirely on his daily gig wages to pay rent.
 
 ### 1. The Setup (Frictionless and Inclusive)
-It’s Monday morning. Rahul opens the WinkIT app. Because his English isn't perfect, he toggles the app to **Tamil**. The UI instantly adapts natively, building immediate trust. He sees a weekly policy offered for just ₹45. He swipes to activate. His wallet is linked, and he starts his week of deliveries.
+It’s Monday morning. "அர்ஜுன் ஆப்பை திறந்தார்"... Didn't quite catch that? Arjun feels the exact same way when faced with complex English insurance forms.
+Because his English isn't perfect, he opens the WinkIT app and immediately toggles it to Tamil. The UI adapts natively, building immediate trust. He sees a weekly policy offered for just ₹45. He swipes to activate. His wallet is linked, and he starts his week of deliveries.
 
 ### 2. The Disruption (Situational Awareness)
 It’s Thursday afternoon, and a sudden, severe monsoon hits Chennai. 
