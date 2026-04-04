@@ -9,9 +9,11 @@
 ---
 
 ## **Quick Links:**
-* **[Watch the Phase 2 Pitch and Live DB Sync Video](#)** *(Insert Link Here)*
+* **[Watch the Phase 2 Video](https://www.youtube.com/watch?v=adCHyBwLI7Q)**
+* **Check out the App APK** in our [Release files](https://github.com/dagaayush1205/Winkit/releases)
 * **[View our original Phase 1 Submission](Phase1_README.md)**
 * * For a deep dive into our *Actuarial Math, Solvency Projections (ARR), and Python Daemon architectures*, please read our 17-page Technical Whitepaper- [Astrobugs- Technical and Mathematical Architecture](https://docs.google.com/document/d/1gjIR0apVZ7Ce38yYHQ_RXWEx3r0PsBa64hxBGkMXcVM/edit?usp=sharing)
+
 
 
 ## Executive Summary
@@ -289,7 +291,7 @@ This is where WinkIT separates itself from traditional InsurTech. We replaced hu
 No humans. No manual claims.  
 Only **data → decisions → execution**
 
----
+---https://www.youtube.com/watch?v=adCHyBwLI7Q
 
 ### A. Risk Detection Engine
 
@@ -665,7 +667,7 @@ Our operational dashboard is deployed and live.
 To test the sensor layer and UI, you have two options:
 
 **Option A: Quick Test (Recommended)**
-* Download the `app-debug.apk` directly from our **[GitHub Releases](#)** page and install it on your Android device.
+* Download the `app-debug.apk` directly from our **[GitHub Releases](https://github.com/dagaayush1205/Winkit/releases)** page and install it on your Android device.
 * **Evaluator Login Credentials:**
   * **The Pre-Configured Profile (Fast Track):** To instantly view a fully populated profile with an established Trust Score and history, log in using Phone: `9876543210` and Platform ID: `ZEP-1001` (Rahul Sharma).
   * **The Cold-Start Experience:** To test the onboarding flow and our introductory premium generation, log in with your own phone number and create a unique mock Platform ID (e.g., `BLNK-9999`).
@@ -681,7 +683,7 @@ If you wish to evaluate the Kotlin architecture:
     SUPABASE_ANON_KEY="your supabase anon key"
     GEMINI_API_KEY="your gemini api key"
    ```
-   **NOTE**- Since we are unable to share supabase url and key, we would love for you to use your own key, if needed, set up the database using this doc-
+   **NOTE**- Since we are unable to share supabase url and key, we would love for you to use your own key, if needed, but the setup of the database would be difficult. Hence, we recommend option A for the test runs and option B to deep dive into the code.
    
 5. Sync the Gradle project.
 6. **Crucial Setup Note:** Please deploy the application to a Physical Android Device rather than a desktop emulator. The WinkIT Fraud Fortress strictly requires authentic IMU variance and GPS telemetry; an emulator will trigger a "Mock Location / Spoofing" rejection state!
@@ -690,12 +692,8 @@ If you wish to evaluate the Kotlin architecture:
 Our core actuaries, LLM pipelines, and payout daemons are currently deployed and running natively on a DigitalOcean Droplet.
 - Security Protocol: Following zero-trust security best practices, we **cannot publicly expose our Droplet IP address or SSH credentials** to protect our production database keys and financial API secrets.
 - Live Verification: To verify the backend execution, please watch our Live Backend Execution Video. In this video, we SSH into the server, trigger a simulated monsoon event, and show the live terminal logs of the daemons matching H3 hexes, generating ESCROW claims, and executing the Razorpay UPI transfers.
-  
 
-https://github.com/user-attachments/assets/d2d6ea28-b91f-4d8f-8388-1be7cf9a7a8d
-
-
-> **Note:** If the video does not play, click on this link to view (open it in a new tab): 
+> **Note:** For the video, click on this link to view (open it in a new tab): 
 
 ### 4. Supabase Ledger
 Our PostgreSQL database is live and fully integrated. You do not need to run this locally. Any policy purchase made on the Android App, or any payout executed by the Python Backend, will reflect instantaneously on the Vercel Winklytics dashboard via real-time WebSocket syncing.
@@ -810,7 +808,8 @@ WinkIT is built on a modern, decoupled stack designed for scale and security:
 We didn't just build for this hackathon; our architecture is designed to scale into a fully operational InsurTech entity.
 
 * **(Distribution):** Launching the **WinkIT WhatsApp Bot**. Because our backend is completely "headless" (Decision #4), we can trigger the exact same smart contracts and UPI payouts via WhatsApp messages for riders who don't want to install an app.
-* **(Regulatory Sandbox):** Official submission to the **IRDAI Regulatory Sandbox** to begin live beta testing. We shall dockerise this in the next phase.
+* **(Customer Support):** Customer support system for the end-users with features like voice enabler.
+* **(Dockerised Application)**
 
 And we add some spice :)
 ---
