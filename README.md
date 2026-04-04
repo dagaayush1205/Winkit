@@ -11,6 +11,7 @@
 ## **Quick Links:**
 * **[Watch the Phase 2 Pitch and Live DB Sync Video](#)** *(Insert Link Here)*
 * **[View our original Phase 1 Submission](Phase1_README.md)**
+* * For a deep dive into our *Actuarial Math, Solvency Projections (ARR), and Python Daemon architectures*, please read our 17-page Technical Whitepaper- [Astrobugs- Technical and Mathematical Architecture](https://docs.google.com/document/d/1gjIR0apVZ7Ce38yYHQ_RXWEx3r0PsBa64hxBGkMXcVM/edit?usp=sharing)
 
 
 ## Executive Summary
@@ -52,26 +53,26 @@ WinkIT is an autonomous Spatio-Temporal Parametric Engine designed to solve the 
 
 To truly understand WinkIT, you have to look past the Python daemons and PostgreSQL ledgers, and view the platform from the seat of a delivery bike. That is why we are taking you through a journey starting right at the end user.
 
-**Meet Arjun.** Arjun is a 24-year-old Zepto rider in Chennai. He relies entirely on his daily gig wages to pay rent.
+**Meet Natasha Rominov.** Natasha Rominov is a 24-year-old Zepto rider in Chennai. She relies entirely on her daily gig wages to pay rent.
 
 ### 1. The Setup (Frictionless and Inclusive)
-It’s Monday morning. "அர்ஜுன் ஆப்பை திறந்தார்"... Didn't quite catch that? Arjun feels the exact same way when faced with complex English insurance forms.
-Because his English isn't perfect, he opens the WinkIT app and immediately toggles it to Tamil. The UI adapts natively, building immediate trust. He sees a weekly policy offered for just ₹45. He swipes to activate. His wallet is linked, and he starts his week of deliveries.
+It’s Monday morning. "அர்ஜுன் ஆப்பை திறந்தார்"... Didn't quite catch that? Natasha Rominov feels the exact same way when faced with complex English insurance forms.
+Because her English isn't perfect, she opens the WinkIT app and immediately toggles it to Tamil. The UI adapts natively, building immediate trust. She sees a weekly policy offered for just ₹45. She swipes to activate. Her wallet is linked, and she starts her week of deliveries.
 
 ### 2. The Disruption (Situational Awareness)
 It’s Thursday afternoon, and a sudden, severe monsoon hits Chennai. 
-Rahul is 5 kilometers from home. He opens the WinkIT app and looks at the **3D Deck.gl Map**. He sees the grid around him shifting colors. The H3 Hex he is currently in turns flashing red. A notification pops up in Tamil: *"Severe waterlogging detected in your zone. Please find safe shelter."*
+Natasha Rominov is 5 kilometers from home. She opens the WinkIT app and looks at the **3D Deck.gl Map**. She sees the grid around her shifting colors. The H3 Hex he is currently in turns flashing red. A notification pops up in Tamil: *"Severe waterlogging detected in your zone. Please find safe shelter."*
 
 ### 3. The Magic (Zero-Touch Adjudication)
-Rahul takes shelter under a metro station overhang. The rain is blinding. In traditional insurance, Rahul would lose his wages for the day, and eventually, he’d have to fill out a 4-page PDF claim form in English and wait 30 days for an adjuster to review it.
+Natasha Rominov takes shelter under a metro station overhang. The rain is blinding. In traditional insurance, Natasha Rominov would lose her wages for the day, and eventually, she’d have to fill out a 4-page PDF claim form in English and wait 30 days for an adjuster to review it.
 
-**With WinkIT, Rahul does absolutely nothing.** He just waits out the storm safely.
+**With WinkIT, Natasha does absolutely nothing.** She just waits out the storm safely.
 
 ### 4. The Payout (Instant Liquidity)
-One hour later, while still sitting under the bridge, his phone buzzes. It’s a bank notification. 
+One hour later, while still sitting under the bridge, her phone buzzes. It’s a bank notification. 
 **"₹80.00 credited to your account via Razorpay UPI."**
 
-Because his phone's GPS and IMU sensors proved he was trapped in an active hazard zone, WinkIT's smart contract automatically authorized an hourly drip-feed payout. Rahul didn't file a claim. He didn't call support. The system simply knew he was in danger, verified his physics, and replaced his lost wages instantly.
+Because her phone's GPS and IMU sensors proved he was trapped in an active hazard zone, WinkIT's smart contract automatically authorized an hourly drip-feed payout. Natasha Rominov didn't file a claim. she didn't call support. The system simply knew she was in danger, verified her physics, and replaced her lost wages instantly.
 
 ---
 
@@ -97,7 +98,7 @@ Because his phone's GPS and IMU sensors proved he was trapped in an active hazar
 ### 3. Geospatial Standardization via Uber’s H3 Index
 * **What:** All weather, traffic, and rider locations are mapped to standard H3 hexagonal grid strings instead of complex spatial polygons.
 * **Why:** Makes database geospatial queries deterministic and lightning-fast at scale.
-* **Learn More:** [Uber Engineering Blog on H3](https://www.uber.com/se/en/blog/h3/)
+* **Learn More:** [Uber Engineering Blog on H3](https://h3geo.org/docs/)
 
 **4. The "Headless" Insurance Core (Ready for Phase 3)**
 * **What:** The backend API and database logic are built completely agnostic of the Android frontend.
@@ -105,7 +106,7 @@ Because his phone's GPS and IMU sensors proved he was trapped in an active hazar
 
 **5. Asynchronous Server-Side Batching**
 * **What:** All heavy API queries (weather, traffic) and risk computations execute asynchronously on our Python backend; the mobile app never pings external APIs directly.
-* **Why:** Preserves the gig worker’s battery life and limited mobile data, ensuring the app runs lightning-fast even on low-end devices in 3G network zones.
+* **Why:** The API calls significantly reduce, we now only require batched API calls. This is computationally efficient. It also preserves the gig worker’s battery life and limited mobile data, ensuring the app runs lightning-fast even on low-end devices in 3G network zones. 
 
 ---
 
@@ -119,7 +120,7 @@ Because his phone's GPS and IMU sensors proved he was trapped in an active hazar
 * **What:** The system algorithmically blocks the purchase of new policies in a specific H3 zone if a severe calamity is already actively ongoing.
 * **Why:** Protects platform liquidity by preventing bad actors from buying insurance *only* after they realize they cannot work.
 
-**8. Zero-Touch Parametric Adjudication (Killing OPEX)**
+**8. Zero-Touch Parametric Adjudication (Killing OPEX- Operation Expenditure)**
 * **What:** Payouts trigger automatically when API data (weather/curfews) intersects with a rider's GPS location.
 * **Why:** Eliminates the need for human claims adjusters, keeping operational costs near zero so micro-premiums remain highly profitable.
 
@@ -265,7 +266,7 @@ graph TD
 
 **What it computes:**
 - Nothing. Zero math. It's a sensor.
-
+  
 **What it collects:**
 - GPS coordinates (every 5 seconds)
 - IMU variance (accelerometer/gyroscope)
@@ -273,7 +274,7 @@ graph TD
 - Mock location status
 
 **What happens if fraud detected:**
-- GPS pings marked as "is_flagged_fraud = true"
+- GPS pings marked as `is_flagged_fraud = true`
 - Future claims from that device auto-rejected
 - Trust Score automatically penalized
 
@@ -282,6 +283,7 @@ graph TD
 ## 2. Backend — The Autonomous Underwriter
 
 This is where WinkIT separates itself from traditional InsurTech. We replaced human claims adjusters with **deterministic, asynchronous Python daemons.**
+> We have used a DigitalOcean droplet as the server with 1GB RAM, 25GB disk storage and 1 CPU Core, 1 VCPU made on Ubuntu 24.04 LTS. We have not purchased any paid vCPU. Rather this is a part of GitHub's student benefit and it's tie-up with DigitalOcean
 
 ### Core Idea:
 No humans. No manual claims.  
@@ -312,7 +314,7 @@ Why it works (Example Scenario):
 Safety Layer (Preventing Hallucinations):
 ├─ Physical validation tier overrides the LLM if physics disagree.
 ├─ If LLM says "TOTAL SHUTDOWN" but TomTom Traffic is flowing at 40% speed...
-└─ OVERRIDE: Risk downgraded to 0.0. Ensures we never over-commit financially.
+└─ OVERRIDE: Risk downgraded to 0.0.Loading Ensures we never over-commit financially.
 ```
 
 ```mermaid
@@ -372,7 +374,7 @@ To ensure we never breach the Guidewire constraint of ₹50/week, we abandoned l
 
 ### C. Smart Contract Trigger Engine
 
-Runs every **30 seconds**.
+Runs every **5 minutes**.
 
 **What it does:**
 1. Finds active disruptions.
@@ -442,7 +444,7 @@ To maintain strict domain isolation and a pristine audit trail, the database is 
 <img width="1519" height="928" alt="Screenshot from 2026-04-04 14-31-05" src="https://github.com/user-attachments/assets/b6a9b654-8165-416d-b24a-80ad154e77e4" />
 
 #### III. The Escrow and Settlement Ledger
-* **`claims_and_payouts`:** The most critical table in the platform. It safely holds smart contract claims generated by the Drip-Feed engine in a rigid **ESCROW state**. Only after passing the Fraud Fortress does a record transition to `AUTO_PAID` with a Razorpay UTR.
+* **`claims_and_payouts`:** The most critical table in the platform. It safely holds smart contract claims generated by the Drip-Feed engine in a rigid **ESCROW state**. Only after passing the Fraud Fortress does a record transition to `AUTO_PAID` with a Razorpay UTR. Right now, the RazorPay function is a placeholder. It will need more time as the app needs to be verified in Google Play and KYC for it to work. However, we have implemented mock payments that works. We will implement Razorpay in the next phase.
 * **`relocation_events`:** Tracks surge bonuses and safe-routing directives pushed to the rider's UI during active hazards.
 * **`manual_claims`:** The fallback mechanism for edge-case disruptions not caught by the parametric oracle, ensuring zero coverage gaps for the worker.
 
@@ -479,9 +481,9 @@ If the Python Backend is the brain and Supabase is the ledger, **Winklytics** is
 * **Live Burning Cost Rate (BCR):** Continuously calculates our net claim exposure relative to premium liquidity. 
 * **The 85% Circuit Breaker:** If a catastrophic event pushes the portfolio BCR past 85%, Winklytics automatically suspends new policy enrollments in the affected H3 zones to protect the capital pool.
 * **Fraud Fortress Feed:** A live, scrolling feed of rejected claims. It details the exact physics vector (e.g., *GNSS Spoofing*, *IMU Teleportation*) that triggered the rejection and tracks the automatic deductions to the rider's Trust Score.
-* **Capital Protection Metrics:** Tracks the "Liquidity Saved" delta—showing investors exactly how much capital was preserved by using our hourly Drip-Feed Escrow model instead of traditional lump-sum payouts.
+* **Capital Protection Metrics:** Tracks the "Liquidity Saved" delta-showing investors exactly how much capital was preserved by using our hourly Drip-Feed Escrow model instead of traditional lump-sum payouts.
 
-##### **NOTE**- The authentication and some buttons are mock but the data is being pulled real time from supabase. The complete lifecycle will be implemented in Phase-3
+> **NOTE**- The authentication and some buttons are mock but the data is being pulled real time from supabase. The complete lifecycle will be implemented in Phase-3
 ---
 
 ### The Execution Flow (The "Last Mile")
@@ -525,14 +527,14 @@ sequenceDiagram
 
 This is the exact chronological lifecycle of a WinkIT policy, executing from purchase to payout in a fully autonomous loop.
 
-- **1.  Policy Inception:** User purchases a dynamic, 7-day policy via the App.
-- **2.  Hazard Detection:** Backend Oracles detect a severe disruption (e.g., Flooding).
-- **3.  Risk Mapping:** The AI classifies the risk and maps it to specific **H3 Hexes**.
-- **4.  Spatial Intersection:** The rider's GPS telemetry intersects with the active hazard zone.
-- **5.  Smart Contract Trigger:** The engine automatically drip-feeds the hourly payout rate into **ESCROW**.
-- **6.  Fraud Gauntlet:** The Fraud Fortress audits the rider's IMU and GNSS data for spoofing.
-- **7.  Instant Settlement:** The payout is cleared and routed through the **Razorpay UPI Gateway**.
-- **8.  Ledger Finality:** The UTR is recorded, and the rider's wallet updates instantly.
+- **Step 1:  Policy Inception:** User purchases a dynamic, 7-day policy via the App.
+- **Step 2:  Hazard Detection:** Backend Oracles detect a severe disruption (e.g., Flooding).
+- **Step 3:  Risk Mapping:** The AI classifies the risk and maps it to specific **H3 Hexes**.
+- **Step 4:  Spatial Intersection:** The rider's GPS telemetry intersects with the active hazard zone.
+- **Step 5:  Smart Contract Trigger:** The engine automatically drip-feeds the hourly payout rate into **ESCROW**.
+- **Step 6:  Fraud Gauntlet:** The Fraud Fortress audits the rider's IMU and GNSS data for spoofing.
+- **Step 7:  Instant Settlement:** The payout is cleared and routed through the **Razorpay UPI Gateway**.
+- **Step 8:  Ledger Finality:** The UTR is recorded, and the rider's wallet updates instantly.
 
 ---
 
@@ -693,6 +695,7 @@ Our core actuaries, LLM pipelines, and payout daemons are currently deployed and
 https://github.com/user-attachments/assets/d2d6ea28-b91f-4d8f-8388-1be7cf9a7a8d
 
 
+> **Note:** If the video does not play, click on this link to view (open it in a new tab): 
 
 ### 4. Supabase Ledger
 Our PostgreSQL database is live and fully integrated. You do not need to run this locally. Any policy purchase made on the Android App, or any payout executed by the Python Backend, will reflect instantaneously on the Vercel Winklytics dashboard via real-time WebSocket syncing.
