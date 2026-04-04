@@ -85,10 +85,10 @@ Because his phone's GPS and IMU sensors proved he was trapped in an active hazar
 **2. Domain-Driven Database Design (Invoice vs. Receipt)**
 * **What:** We rigidly separated data into `worker_charges` (dynamic quotes) and `weekly_policies` (active contracts).
 * **Why:** Maintains a pristine financial audit trail by keeping unaccepted AI quotes completely separate from legally binding coverage liability.
-
-**3. Geospatial Standardization via Uber’s H3 Index**
+### 3. Geospatial Standardization via Uber’s H3 Index
 * **What:** All weather, traffic, and rider locations are mapped to standard H3 hexagonal grid strings instead of complex spatial polygons.
 * **Why:** Makes database geospatial queries deterministic and lightning-fast at scale.
+* **Learn More:** [Uber Engineering Blog on H3](https://www.uber.com/se/en/blog/h3/)
 
 **4. The "Headless" Insurance Core (Ready for Phase 3)**
 * **What:** The backend API and database logic are built completely agnostic of the Android frontend.
