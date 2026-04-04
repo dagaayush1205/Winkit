@@ -4,7 +4,7 @@
 🔗 **Quick Links:**
 * **[Watch the Phase 2 Pitch & Live DB Sync Video](#)** *(Insert Link Here)*
 * **[View our original Phase 1 Submission](PHASE1_README.md)**
-* For a deep dive into our **Actuarial Math, Solvency Projections (ARR), and Python Daemon architectures**, please read our 17-page Technical Whitepaper [here]
+* For a deep dive into our **Actuarial Math, Solvency Projections (ARR), and Python Daemon architectures**, please read our 17-page Technical Whitepaper- [Astrobugs- Technical and Mathematical Architecture-3.pdf](https://github.com/user-attachments/files/26480114/Astrobugs-.Technical.and.Mathematical.Architecture-3.pdf)
 
 ---
 ## FROM AN END USER'S PERSPECTIVE (The Rider's Journey)
@@ -33,15 +33,15 @@ Because his phone's GPS and IMU sensors proved he was trapped in an active hazar
 
 ---
 
-### 🧠 The Tech Behind the Magic
+### The Tech Behind the Magic
 * **Why the app was in Tamil:** The Native L10n State Engine.
 * **Why the map flashed red:** The Python Backend pushed an H3 state update based on TomTom Traffic and OpenWeather APIs.
 * **Why he got paid without asking:** The Cron Oracle detected his GPS intersecting with the hazard hex.
 * **Why he got the money instantly:** The Fraud Fortress verified his IMU didn't show "teleportation," and the Payout Daemon fired the UPI API.
 ---
-> **Before you dive into the codebase, we want to highlight 15 deliberate engineering decisions we made to maximize platform resilience, solvency, and scale. These aren't just features; they are opinionated trade-offs.**
+> **Before you dive into the codebase, we want to highlight 16 deliberate engineering decisions we took to maximize platform resilience, solvency, and scale. These aren't just features; they are opinionated trade-offs.**
 
-## 15 Executive Technical Decisions
+## 16 Executive Technical Decisions
 
 ### Architecture and Infrastructure
 
@@ -112,6 +112,10 @@ Because his phone's GPS and IMU sensors proved he was trapped in an active hazar
 **15. Event-Driven Risk Telemetry (Proactive Dashboarding)**
 * **What:** The Python backend continuously monitors external disruption APIs and pushes real-time 3D risk state updates directly to the rider’s frontend.
 * **Why:** Replaces passive insurance with proactive risk management, giving drivers instant situational awareness to navigate safely.
+
+**16. Personalised Chatbot**
+* **What:** A context-aware AI assistant built exclusively for WinkIT, designed to help riders understand risk, policies, and payouts in real time.
+* **Why:** The chatbot turns WinkIT from an invisible backend system into a visible, trusted co-pilot for every rider.
 
 ---
 # How the Entire System Works
@@ -217,6 +221,20 @@ graph TD
 > Think of the app as:  
 > **"A live sensor node feeding reality into the insurance engine"**
 
+**What it computes:**
+- Nothing. Zero math. It's a sensor.
+
+**What it collects:**
+- GPS coordinates (every 5 seconds)
+- IMU variance (accelerometer/gyroscope)
+- Device integrity (Play Integrity API, root detection)
+- Mock location status
+
+**What happens if fraud detected:**
+- GPS pings marked as "is_flagged_fraud = true"
+- Future claims from that device auto-rejected
+- Trust Score automatically penalized
+
 ---
 
 ## 2. Backend — The Autonomous Underwriter
@@ -275,6 +293,14 @@ graph TD
 ```
 #### Why H3 Hexagons (Not Just Lat/Lng)?
 Traditional geofencing relies on comparing raw floating-point coordinates (e.g., 12.9716°N vs 12.9710°N), which leads to boundary inconsistencies and false negatives.
+
+Example Hallucination & Override:
+LLM Output: "TOTAL_SHUTDOWN (Risk 4.5)"
+TomTom Reality: "Arterial roads at 40% flow"
+System Decision: Downgrade to ARTERIAL_BLOCKAGE (Risk 2.5)
+Premium Charged: ₹40 instead of ₹48
+Result: Actuarially sound
+
 
 * **The WinkIT Solution:** Convert both rider and disaster zones into Uber's H3 spatial indexes (e.g., `88419551d5dffff`).
 * **The Result:** Deterministic, O(1) string-matching. Zero disputes about *"were you really in the zone?"*
@@ -598,11 +624,11 @@ To test the sensor layer and UI, you have two options:
 
 **Option B: Build from Source**
 If you wish to evaluate the Kotlin architecture:
-1. Clone the repository: `git clone https://github.com/your-repo/winkit-android`
-2. Open the project in **Android Studio** (Ladybug or newer recommended).
+1. Clone the repository: `git clone https://github.com/dagaayush1205/Winkit`
+2. Open the project in **Android Studio** (Ladybug or newer recommended). Open the `frontend` folder.
 3. Create or open the `local.properties` file in the root directory and append your environment variables:
    ```properties
-     OPENWEATHER_API_KEY="your openweather api key"
+    OPENWEATHER_API_KEY="your openweather api key"
     SUPABASE_URL="your supabase url"
     SUPABASE_ANON_KEY="your supabase anon key"
     GEMINI_API_KEY="your gemini api key"
@@ -651,7 +677,7 @@ Traditional insurers and digital-first disruptors cannot easily replicate the Wi
 
 ---
 
-### 🖥️ System Deep-Dive: Infrastructure Overhead & Resource Utilization
+### System Deep-Dive: Infrastructure Overhead & Resource Utilization
 
 We designed WinkIT to operate with **extremely low infrastructure overhead**, proving that parametric micro-insurance can be executed at scale without bloated enterprise servers. By utilizing a headless, event-driven architecture and offloading state management to Supabase, our compute footprint remains minimal even during active claim cycles.
 
@@ -673,3 +699,26 @@ Below are the live resource utilization graphs captured during our deployment, c
 ![WhatsApp Image 2026-04-04 at 14 35 00](https://github.com/user-attachments/assets/21480c15-62ce-48cc-aa37-3f36c5a727fe)
 ![WhatsApp Image 2026-04-04 at 14 42 44](https://github.com/user-attachments/assets/3414ab89-11cd-47da-b42b-18ebb32bfdf6)
 
+---
+
+## The Tech Stack
+
+WinkIT is built on a modern, decoupled stack designed for scale and security:
+
+* **Frontend (Sensor):** Android (Kotlin, Jetpack Compose), Deck.gl (3D Maps).
+* **Backend (Brain):** Python 3.10, FastAPI, DigitalOcean Droplets.
+* **Database (Ledger):** Supabase (PostgreSQL, Edge Functions, Realtime WebSockets).
+* **AI & Oracles:** Cerebras Inference (Llama 3.1 8B), OpenWeather API, TomTom Traffic API.
+* **FinTech & Auth:** Razorpay (UPI Payouts), JWT, Play Integrity API.
+* **Command Center:** Vite, React, TailwindCSS, Vercel.
+
+---
+## Future Scope (Phase 3 Roadmap)
+
+We didn't just build for this hackathon; our architecture is designed to scale into a fully operational InsurTech entity.
+
+* **(Distribution):** Launching the **WinkIT WhatsApp Bot**. Because our backend is completely "headless" (Decision #4), we can trigger the exact same smart contracts and UPI payouts via WhatsApp messages for riders who don't want to install an app.
+* **(Regulatory Sandbox):** Official submission to the **IRDAI Regulatory Sandbox** to begin live beta testing. We shall dockerise this in the next phase.
+
+And we add some spice :)
+---
