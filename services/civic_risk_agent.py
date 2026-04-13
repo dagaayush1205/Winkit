@@ -1,24 +1,34 @@
+"""
+This script is performing the following functions:
+The main objective is to create an agent that can analyze local news headlines
+for a specific zone in Chennai and classify the civic risk level based on the
+severity of events mentioned in the news. The agent uses a Large Language Model
+(LLM) to classify the events into predefined categories and then applies
+actuarial logic to determine a probability of civic disruption (p_civic).
+Additionally, it validates the LLM's classification against live traffic
+telemetry from the TomTom Traffic API to ensure accuracy.
+"""
+
 import os
 import sys
 import json
 import requests
 import feedparser
-from openai import OpenAI  # Swapped Groq for standard OpenAI client
+from openai import OpenAI  
 
-# Adjust path to import from config.py in the root directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(current_dir)
 sys.path.append(root_dir)
 
 try:
-    # Updated to look for CEREBRAS_API_KEY
     from config import TOMTOM, DEMO_MODE, CEREBRAS_API_KEY
 except ImportError:
     print("⚠️ Error: Check your config.py imports. Make sure CEREBRAS_API_KEY is defined.")
     sys.exit(1)
 
+
+    """ Fetching news headlines"""
 def fetch_live_chennai_headlines(max_headlines: int = 5) -> list:
-    """Fetches the latest breaking news headlines for Chennai."""
     rss_url = "https://timesofindia.indiatimes.com/rssfeeds/2950623.cms"
     
     try:
@@ -34,13 +44,11 @@ def fetch_live_chennai_headlines(max_headlines: int = 5) -> list:
 
 class CivicRiskAgent:
     def __init__(self):
-        # Initialize the OpenAI Client pointed at the Cerebras API endpoint
         self.client = OpenAI(
             api_key=CEREBRAS_API_KEY,
             base_url="https://api.cerebras.ai/v1"
         )
         
-        # THE OBJECTIVE ACTUARIAL MATRIX
         self.civic_matrix = {
             "TOTAL_SHUTDOWN": 1.0,     # Curfew, Section 144, Internet ban
             "ARTERIAL_BLOCKAGE": 0.75, # Riots, major protests blocking highways
@@ -63,7 +71,7 @@ class CivicRiskAgent:
         )
 
         try:
-            # 1. Call Cerebras to Classify the Event
+            #  Call Cerebras to Classify the Event
             response = self.client.chat.completions.create(
                 model="llama3.1-8b", # Using Cerebras's Llama 3.1 70B model
                 messages=[{"role": "user", "content": prompt}],
@@ -81,10 +89,10 @@ class CivicRiskAgent:
             event_location = raw_data.get("event_location", "").lower()
             rider_zone_lower = rider_zone.lower()
 
-            # 2. Map Classification to Objective Probability
+            # Map Classification to Objective Probability
             p_base = self.civic_matrix.get(classification, 0.0)
 
-            # 3. Epicenter / Distance Decay Logic
+            # Epicenter / Distance Decay Logic
             if classification == "TOTAL_SHUTDOWN":
                 p_civic = p_base
             elif rider_zone_lower in event_location or event_location in rider_zone_lower:
@@ -92,7 +100,7 @@ class CivicRiskAgent:
             else:
                 p_civic = p_base * 0.20 
 
-            # 4. Traffic Telemetry Validation (The Reality Check)
+            # Traffic Telemetry Validation (The Reality Check)
             is_traffic_validated = self.verify_with_traffic_telemetry(rider_zone, classification)
             
             if not is_traffic_validated and p_civic > 0:
@@ -100,7 +108,7 @@ class CivicRiskAgent:
                 p_civic = 0.0
                 raw_data["reason"] += " (OVERRIDDEN: Traffic telemetry shows normal speeds)."
 
-            # 5. Finalize Payload
+            # Finalize Payload
             raw_data["p_civic"] = round(p_civic, 3)
             raw_data["zone_evaluated"] = rider_zone
             
