@@ -6,8 +6,13 @@ from config import SUPABASE_DB_URL
 from config import SUPABASE_API_KEY
 import h3
 
+# Import our new ML Engine!
+from engine.ml_fraud.anomaly_model import TelemetryFraudModel
+
 supabase: Client = create_client(SUPABASE_DB_URL, SUPABASE_API_KEY)
 
+# Initialize the ML Model (It will train itself on the first run)
+ml_fraud_engine = TelemetryFraudModel()
 
 class Colors:
     HEADER = '\033[95m'
@@ -21,29 +26,31 @@ class Colors:
 
 def evaluate_payload(payload: dict) -> tuple[bool, str]:
     
-    # Hardware check
+    # --- LAYER 1: DETERMINISTIC HARDWARE CHECKS ---
     if payload.get("dev_settings_enabled") is True or payload.get("is_mock_location") is True:
         return True, "Hardware Flag: Mock Location or Dev Settings Enabled"
 
-    # verifying the os_signature_valid and play_integrity_pass flags to detect rooted devices. If either of these checks fails, it indicates that the device's security integrity has been compromised, which is a strong indicator of potential fraud or manipulation.
     if payload.get("os_signature_valid") is False or payload.get("play_integrity_pass") is False:
         return True, "Security Flag: OS Signature/Play Integrity Failed (Rooted Device)"
 
-    # IMU-Inertial Measurement Unit check - if the device is moving at a certain speed but the IMU variance is extremely low, it could indicate that the location is being spoofed without actual movement (teleportation).
+    # --- LAYER 2: ML-POWERED PHYSICS AUDIT (Replacing hardcoded IMU checks) ---
     speed = payload.get("speed_kmh") or 0.0
-    imu = payload.get("imu_variance")
+    # Fallbacks in case Android hasn't sent these specific fields yet
+    accel_var = payload.get("imu_variance") if payload.get("imu_variance") is not None else 0.0
+    gyro_var = payload.get("gyro_variance", 1.0) # Default to 1.0 (normal) if not implemented in app yet
     
-    if speed > 5.0 and imu is not None and imu < 0.1:
-        return True, f"Physics Anomaly: Moving at {speed}km/h but IMU variance is {imu} (Teleportation)"
+    ml_result = ml_fraud_engine.evaluate_telemetry(speed, accel_var, gyro_var)
+    
+    if ml_result['is_fraud']:
+        # We append the probability % so you can show it on Winklytics later!
+        return True, f"ML Anomaly ({ml_result['fraud_probability_percent']}% Risk): {ml_result['reason']}"
 
-    # Space Sensors (GNSS)
+    # --- LAYER 3: GNSS SENSOR CHECKS ---
     gnss_data = payload.get("raw_gnss_data")
     if not gnss_data:
-        # If speed > 0 but there is NO satellite data, that's highly suspicious (software bot)
         if speed > 0:
             return True, "GNSS Anomaly: Missing Satellite Data while moving."
         else:
-            # Could just be indoor scanning, we pass it but it might be flagged later
             pass 
     elif isinstance(gnss_data, list):
         snr_values = [sat.get("snr", 0) for sat in gnss_data if "snr" in sat]
@@ -52,8 +59,9 @@ def evaluate_payload(payload: dict) -> tuple[bool, str]:
             if snr_var < 1.0:
                 return True, f"GNSS Anomaly: SNR variance mathematically impossible ({snr_var:.2f})."
 
-    # Passed all checks
-    return False, "CLEAN: Hardware, Physics, and Sensors Verified."
+    # Passed all checks - We include the ML confidence in the clean message!
+    confidence = 100.0 - ml_result['fraud_probability_percent']
+    return False, f"CLEAN: Hardware, Sensors & ML Verified ({confidence}% Confidence)."
 
 def process_pending_verifications():
     print(f"\n{Colors.CYAN}{Colors.BOLD}🔍 SWEEPING FOR PENDING VERIFICATIONS...{Colors.ENDC}")
@@ -83,14 +91,16 @@ def process_pending_verifications():
                 hex_id = h3.latlng_to_cell(lat, lng, 9)
             except Exception as e:
                 print(f"{Colors.WARNING}   ⚠️ Invalid coordinates for Ping {ping_id}: {e}{Colors.ENDC}")
-        # Run evaluation
+                
+        # Run ML + Deterministic evaluation
         is_fraud, reason = evaluate_payload(row)
         
         # Print status
         if is_fraud:
             print(f"{Colors.FAIL}   [PING {ping_id} | {worker_id}] ❌ FRAUD: {reason}{Colors.ENDC}")
         else:
-            print(f"{Colors.GREEN}   [PING {ping_id} | {worker_id}] ✅ CLEAN{Colors.ENDC}")
+            print(f"{Colors.GREEN}   [PING {ping_id} | {worker_id}] ✅ {reason}{Colors.ENDC}")
+            
         update_payload = {
             "is_flagged_fraud": is_fraud,
             "fraud_reason": reason
