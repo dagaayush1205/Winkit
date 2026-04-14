@@ -2,12 +2,12 @@ import time
 import requests
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import h3
 from supabase import create_client, Client
 import uuid
 
-# Adjust path to import from root directory (One level up from /services)
+# Adjust path to import from root directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(current_dir)
 sys.path.append(root_dir)
@@ -43,24 +43,50 @@ class WeatherCronJob:
         return response.json()
 
     def _generate_mock_forecast(self) -> dict:
-        """Synthetic data for hackathon stress-testing without burning API limits."""
+        """Synthetic data for hackathon stress-testing."""
         current_time = int(time.time())
         return {
             "list": [{
-                "dt": current_time + 3600,
+                "dt": current_time + (i * 10800), # 3-hour jumps
                 "main": {"temp": 28.5},
                 "weather": [{"id": 501}],
-                "wind": {"speed": 5.2}, # m/s
-                "pop": 0.85,            # 85% rain chance
-                "rain": {"3h": 12.5}    # 12.5mm of rain
-            }]
+                "wind": {"speed": 5.2},
+                "pop": 0.85 if i < 10 else 0.10, # Heavy rain early, then clears up
+                "rain": {"3h": 12.5}
+            } for i in range(40)] # 5 days of mock data
         }
 
+    def _extract_7_day_pop(self, forecast_data: dict) -> dict:
+        """Extracts max PoP for the next 5 days and extrapolates days 6 and 7."""
+        daily_pop = {}
+        # 1. Aggregate max PoP per day from the API
+        for block in forecast_data.get('list', []):
+            dt = datetime.fromtimestamp(block['dt'], timezone.utc).date()
+            pop = block.get('pop', 0.0)
+            if dt not in daily_pop or pop > daily_pop[dt]:
+                daily_pop[dt] = pop
+
+        # 2. Map exactly 7 days from today, extrapolating missing days
+        today = datetime.now(timezone.utc).date()
+        final_7_days = {}
+        last_known_pop = 0.0
+        
+        for t in range(7):
+            target_date = today + timedelta(days=t)
+            if target_date in daily_pop:
+                final_7_days[target_date] = daily_pop[target_date]
+                last_known_pop = daily_pop[target_date]
+            else:
+                # Decay logic for days 6 and 7 (or any missing data)
+                last_known_pop = last_known_pop * 0.2  
+                final_7_days[target_date] = last_known_pop
+                
+        return final_7_days
+
     def run_15min_sync(self):
-        """The main cron function. Fetches hexes, pulls weather, and batch inserts."""
+        """Fetches hexes, pulls weather, and batch inserts into DB."""
         print(f"🔍 Fetching active spatial grid from {Colors.CYAN}h3_zone_states{Colors.ENDC}...")
         
-        # 1. Fetch all active hexes
         response = self.supabase.table("h3_zone_states").select("hex_id, zone_name").execute()
         zones = response.data
 
@@ -68,52 +94,42 @@ class WeatherCronJob:
             print(f"{Colors.FAIL}❌ No zones found. Aborting weather sync.{Colors.ENDC}")
             return
 
-        records_to_insert = []
+        current_weather_records = []
+        future_forecast_records = []
         
-        # 💥 THE UPGRADE: Dictionary to cache API calls for large macro-zones
         parent_weather_cache = {}
+        parent_7day_cache = {}
 
-        # 2. Iterate through the grid
         for zone in zones:
-            hex_id = zone['hex_id'] # This is the tiny Resolution 9 hex
+            hex_id = zone['hex_id']
             zone_name = zone.get('zone_name', 'Unknown')
             
             try:
-                # Get the Resolution 7 Parent Hex (The Macro Weather Zone)
                 parent_hex = h3.cell_to_parent(hex_id, 7)
                 
-                # Only hit the API if we haven't checked this massive parent zone yet!
+                # Fetch/Cache API Data for Macro Zone
                 if parent_hex not in parent_weather_cache:
-                    # Get the precise GPS center of the PARENT Hexagon
                     lat, lon = h3.cell_to_latlng(parent_hex)
                     forecast_data = self.get_hex_forecast(lat, lon)
                     parent_weather_cache[parent_hex] = forecast_data
+                    
+                    # Also calculate and cache the 7-day forward array
+                    parent_7day_cache[parent_hex] = self._extract_7_day_pop(forecast_data)
                     print(f"   {Colors.HEADER}📡 API CALL: Fetched new data for Macro-Zone {parent_hex}{Colors.ENDC}")
                 else:
-                    # Reuse the cached API call!
                     forecast_data = parent_weather_cache[parent_hex]
                 
-                # Extract the very first 3-hour block (This is our "Current" operational weather)
+                # 1. Prepare Current Weather Record (For the 'Weather' table)
                 current_block = forecast_data.get('list', [])[0]
-
-                # Parse Actuarial Weather Data
                 pop = current_block.get('pop', 0.0)
                 temp = current_block.get('main', {}).get('temp', 0.0)
                 weather_code = current_block.get('weather', [{}])[0].get('id', 800)
-                
-                # Convert OpenWeather's m/s to km/h for the database
-                wind_speed_ms = current_block.get('wind', {}).get('speed', 0.0)
-                wind_speed_kmh = round(wind_speed_ms * 3.6, 2)
-                
-                # Rain volume (OpenWeather returns this under 'rain' -> '3h')
+                wind_speed_kmh = round(current_block.get('wind', {}).get('speed', 0.0) * 3.6, 2)
                 rain_vol = current_block.get('rain', {}).get('3h', 0.0)
-                
                 forecast_ts = datetime.fromtimestamp(current_block.get('dt'), timezone.utc).isoformat()
-                unique_telemetry_id = f"WT-{uuid.uuid4().hex[:6].upper()}"
                 
-                # Build the Database Row mapping the weather to the specific CHILD hex
-                records_to_insert.append({
-                    "telemetry_id": unique_telemetry_id,
+                current_weather_records.append({
+                    "telemetry_id": f"WT-{uuid.uuid4().hex[:6].upper()}",
                     "Rain": rain_vol,
                     "hex_id": hex_id,
                     "forecast_timestamp": forecast_ts,
@@ -123,16 +139,32 @@ class WeatherCronJob:
                     "temp": temp
                 })
                 
-                print(f"   {Colors.BLUE}🌤️  Processed {zone_name} (Child of {parent_hex}) | PoP: {pop*100}% | Temp: {temp}°C{Colors.ENDC}")
+                # 2. Prepare 7-Day Forecast Records (For the 'future_forecast' table)
+                hex_7_day_array = parent_7day_cache[parent_hex]
+                for target_date, daily_pop in hex_7_day_array.items():
+                    future_forecast_records.append({
+                        "hex_id": hex_id,
+                        "target_date": target_date.isoformat(),
+                        "pop": round(daily_pop, 4),
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    })
+                
+                print(f"   {Colors.BLUE}🌤️  Processed {zone_name} | Current PoP: {pop*100}%{Colors.ENDC}")
 
             except Exception as e:
                 print(f"{Colors.FAIL}❌ Failed to fetch/parse weather for {hex_id}: {e}{Colors.ENDC}")
 
-        # 3. Batch Insert into the Supabase 'Weather' Table
-        if records_to_insert:
-            print(f"\n{Colors.WARNING}💾 Executing batch insert of {len(records_to_insert)} telemetry records into Supabase...{Colors.ENDC}")
-            self.supabase.table("Weather").insert(records_to_insert).execute()
-            print(f"{Colors.GREEN}{Colors.BOLD}✅ Weather grid synchronized successfully!{Colors.ENDC}\n")
+        # Batch Insert Current Weather
+        if current_weather_records:
+            print(f"\n{Colors.WARNING}💾 Executing batch insert of {len(current_weather_records)} current telemetry records...{Colors.ENDC}")
+            self.supabase.table("Weather").insert(current_weather_records).execute()
+            
+        # Batch Upsert 7-Day Forecasts
+        if future_forecast_records:
+            print(f"{Colors.WARNING}🔮 Executing batch UPSERT of {len(future_forecast_records)} future forecast records...{Colors.ENDC}")
+            self.supabase.table("future_forecast").upsert(future_forecast_records, on_conflict="hex_id, target_date").execute()
+            
+        print(f"{Colors.GREEN}{Colors.BOLD}✅ Weather grid synchronized successfully!{Colors.ENDC}\n")
 
 if __name__ == "__main__":
     cron = WeatherCronJob()
