@@ -1,6 +1,8 @@
 import os
 import sys
 from datetime import datetime, timedelta, timezone
+from collections import defaultdict
+import h3
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = current_dir if "config.py" in os.listdir(current_dir) else os.path.dirname(current_dir)
@@ -25,7 +27,7 @@ class ClaimTriggerWorker:
         self.supabase: Client = create_client(SUPABASE_DB_URL, SUPABASE_API_KEY)
 
     def fetch_recent_disruptions(self):
-        """Fetches disruption events logged in the last 60 minutes using explicit UTC."""
+        """Fetches disruption events logged in the last 60 minutes."""
         now_utc = datetime.now(timezone.utc)
         one_hour_ago = (now_utc - timedelta(hours=1)).isoformat()
         
@@ -33,7 +35,6 @@ class ClaimTriggerWorker:
             .select("*") \
             .gte("created_at", one_hour_ago) \
             .execute()
-            
         return response.data or []
 
     def fetch_active_policies(self):
@@ -42,46 +43,52 @@ class ClaimTriggerWorker:
             .select("*") \
             .eq("status", "ACTIVE") \
             .execute()
-            
         return response.data or []
 
-    def get_worker_latest_hex(self, worker_id: str):
-        """Finds exactly where the worker is right now."""
+    def bulk_fetch_latest_telemetry(self) -> dict:
+        """Fetches all recent telemetry and creates an O(1) lookup map of Worker -> Latest Hex."""
+        one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+        
+        # Order by ascending so the loop naturally overwrites older pings, leaving the newest in the dict
         response = self.supabase.table("raw_gps_telemetry") \
-            .select("h3_hex_id") \
-            .eq("worker_id", worker_id) \
-            .order("timestamp", desc=True) \
-            .limit(1) \
+            .select("worker_id, h3_hex_id, timestamp") \
+            .gte("timestamp", one_hour_ago) \
+            .order("timestamp", desc=False) \
             .execute()
             
-        if response.data:
-            return response.data[0].get("h3_hex_id")
-        return None
+        worker_hex_map = {}
+        for row in (response.data or []):
+            if row.get("h3_hex_id"):
+                worker_hex_map[row["worker_id"]] = row["h3_hex_id"]
+                
+        return worker_hex_map
 
-    def check_claim_exists(self, claim_id: str) -> bool:
-        """Prevents double-paying a worker for the same hourly event."""
-        response = self.supabase.table("claims_and_payouts") \
-            .select("claim_id") \
-            .eq("claim_id", claim_id) \
-            .execute()
-        return len(response.data) > 0
-
-    def get_total_paid_today(self, worker_id: str) -> float:
-        """Calculates how much the worker has already been paid today (UTC)."""
+    def bulk_fetch_today_payouts(self) -> dict:
+        """Creates an O(1) lookup map of Worker -> Total Amount Paid Today."""
         today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
         
         response = self.supabase.table("claims_and_payouts") \
-            .select("payout_amt") \
-            .eq("worker_id", worker_id) \
+            .select("worker_id, payout_amt") \
             .gte("created_at", today_start) \
             .execute()
             
-        if not response.data:
-            return 0.0
+        paid_today_map = defaultdict(float)
+        for row in (response.data or []):
+            paid_today_map[row["worker_id"]] += float(row.get("payout_amt", 0.0))
             
-        # Sum up all payouts for today
-        total_paid = sum(float(claim.get("payout_amt", 0.0)) for claim in response.data)
-        return total_paid
+        return paid_today_map
+
+    def bulk_fetch_existing_claims(self) -> set:
+        """Creates an O(1) lookup SET of claim IDs generated in the last few hours."""
+        few_hours_ago = (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat()
+        
+        response = self.supabase.table("claims_and_payouts") \
+            .select("claim_id") \
+            .gte("created_at", few_hours_ago) \
+            .execute()
+            
+        return {row["claim_id"] for row in (response.data or [])}
+
 
     def process_triggers(self):
         """The main chronological sweep."""
@@ -99,7 +106,14 @@ class ClaimTriggerWorker:
             print(f"{Colors.WARNING}⚠️ No active policies found. No coverage to trigger.{Colors.ENDC}")
             return
 
+        # 🚀 LOAD BULK DATA INTO MEMORY (Bye bye N+1!)
+        print("📥 Caching global fleet telemetry and financial state into memory...")
+        worker_hex_map = self.bulk_fetch_latest_telemetry()
+        paid_today_map = self.bulk_fetch_today_payouts()
+        existing_claims_set = self.bulk_fetch_existing_claims()
+
         claims_generated = 0
+        claims_to_insert = [] # We will batch insert the new claims!
 
         # Loop through every recent disaster
         for event in events:
@@ -109,57 +123,70 @@ class ClaimTriggerWorker:
             
             print(f"\n{Colors.CYAN}--- Processing Event: {event_id} ({event_type} in {danger_hex}) ---{Colors.ENDC}")
 
+            # 💥 THE H3 UPGRADE: Create a 1-Hex Blast Radius around the danger zone
+            # This returns a set containing the danger_hex AND its 6 immediate neighbors
+            try:
+                blast_radius_hexes = h3.grid_disk(danger_hex, 1)
+            except Exception as e:
+                print(f"{Colors.FAIL}❌ Invalid Event Hex {danger_hex}: {e}{Colors.ENDC}")
+                continue
+
             # Loop through everyone with insurance
             for policy in active_policies:
                 worker_id = policy['worker_id']
                 policy_id = policy['policy_id']
                 
-                # 1. Fetch their daily max and calculate their hourly drip rate
-                daily_max = float(policy.get('max_daily_coverage', 500.0))
-                # Default to 10% of their daily max per hour (e.g., ₹50/hr for a ₹500 policy)
-                hourly_payout = float(policy.get('hourly_rate', daily_max / 10.0))
-
-                # Check if the worker is actually in the danger zone
-                worker_hex = self.get_worker_latest_hex(worker_id)
+                # 1. Check if the worker is actually in the danger zone using O(1) Dictionary Lookup
+                worker_hex = worker_hex_map.get(worker_id)
                 
-                if worker_hex == danger_hex:
+                if not worker_hex:
+                    continue # No recent GPS data for this worker
+                
+                # Check if worker is ANYWHERE inside the blast radius
+                if worker_hex in blast_radius_hexes:
                     
-                    # 2. Prevent over-paying if they hit their daily cap
-                    today_paid = self.get_total_paid_today(worker_id)
+                    daily_max = float(policy.get('max_daily_coverage', 500.0))
+                    hourly_payout = float(policy.get('hourly_rate', daily_max / 10.0))
+                    
+                    # 2. Prevent over-paying if they hit their daily cap using O(1) Dictionary Lookup
+                    today_paid = paid_today_map.get(worker_id, 0.0)
                     
                     if today_paid >= daily_max:
                         print(f"   {Colors.WARNING}⏭️  {worker_id} maxed out daily coverage (₹{daily_max}). Skipping.{Colors.ENDC}")
                         continue
                         
-                    # 3. Calculate exact payout (Handle the remainder if they are close to the cap)
                     actual_payout = min(hourly_payout, daily_max - today_paid)
                     
-                    # Generate an Idempotent Claim ID (e.g., CLM-ZEP1001-EVT1234)
+                    # 3. Check for double payments using O(1) Set Lookup
                     claim_id = f"CLM-{worker_id}-{event_id[-8:]}"
                     
-                    if self.check_claim_exists(claim_id):
+                    if claim_id in existing_claims_set:
                         print(f"   {Colors.BLUE}⏭️  Claim already exists for {worker_id} this hour. Skipping.{Colors.ENDC}")
                         continue
                         
                     print(f"   {Colors.WARNING}🚨 HIT! {worker_id} in danger zone. Drip-feeding ₹{actual_payout:.2f}...{Colors.ENDC}")
                     
-                    # 💥 THE HOURLY DRIP-FEED SMART CONTRACT EXECUTION 💥
-                    self.supabase.table("claims_and_payouts").insert({
+                    # Append to our batch insert list
+                    claims_to_insert.append({
                         "claim_id": claim_id,
                         "worker_id": worker_id,
                         "policy_id": policy_id,
                         "event_id": event_id,
-                        "payout_amt": round(actual_payout, 2), # Insert the fractional amount
+                        "payout_amt": round(actual_payout, 2),
                         "status": "ESCROW",
                         "fraud_flags_triggered": 0
-                    }).execute()
+                    })
                     
+                    # Update local state to prevent duplicate processing in the same run
+                    existing_claims_set.add(claim_id)
+                    paid_today_map[worker_id] += actual_payout
                     claims_generated += 1
-                    print(f"   {Colors.GREEN}✅ Claim {claim_id} locked in ESCROW.{Colors.ENDC}")
-                else:
-                    # Worker is safe, no payout needed
-                    pass 
 
+        # 💥 BATCH INSERT ALL CLAIMS AT ONCE 💥
+        if claims_to_insert:
+            print(f"\n{Colors.WARNING}💾 Executing batch insert of {len(claims_to_insert)} smart contract claims into ESCROW...{Colors.ENDC}")
+            self.supabase.table("claims_and_payouts").insert(claims_to_insert).execute()
+            
         print(f"\n{Colors.BOLD}🏁 Sweep Complete. Generated {claims_generated} new ESCROW claims.{Colors.ENDC}")
 
 if __name__ == "__main__":
