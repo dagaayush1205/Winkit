@@ -8,7 +8,6 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(os.path.dirname(current_dir))
 sys.path.append(root_dir)
 
-# Notice: We removed OpenWeather API imports! The engine is now 100% internal database driven.
 from config import DEMO_MODE, SUPABASE_DB_URL, SUPABASE_API_KEY
 from services.civic_risk_agent import CivicRiskAgent, fetch_live_chennai_headlines
 from supabase import create_client, Client
