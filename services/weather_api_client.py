@@ -69,21 +69,29 @@ class WeatherCronJob:
             return
 
         records_to_insert = []
+        
+        # 💥 THE UPGRADE: Dictionary to cache API calls for large macro-zones
+        parent_weather_cache = {}
 
         # 2. Iterate through the grid
         for zone in zones:
-            hex_id = zone['hex_id']
+            hex_id = zone['hex_id'] # This is the tiny Resolution 9 hex
             zone_name = zone.get('zone_name', 'Unknown')
             
             try:
-                # Get the precise GPS center of the H3 Hexagon (Using H3 v4 syntax)
-                lat, lon = h3.cell_to_latlng(hex_id)
-            except Exception as e:
-                print(f"{Colors.WARNING}⚠️ Invalid hex_id {hex_id}: {e}{Colors.ENDC}")
-                continue
-            
-            try:
-                forecast_data = self.get_hex_forecast(lat, lon)
+                # Get the Resolution 7 Parent Hex (The Macro Weather Zone)
+                parent_hex = h3.cell_to_parent(hex_id, 7)
+                
+                # Only hit the API if we haven't checked this massive parent zone yet!
+                if parent_hex not in parent_weather_cache:
+                    # Get the precise GPS center of the PARENT Hexagon
+                    lat, lon = h3.cell_to_latlng(parent_hex)
+                    forecast_data = self.get_hex_forecast(lat, lon)
+                    parent_weather_cache[parent_hex] = forecast_data
+                    print(f"   {Colors.HEADER}📡 API CALL: Fetched new data for Macro-Zone {parent_hex}{Colors.ENDC}")
+                else:
+                    # Reuse the cached API call!
+                    forecast_data = parent_weather_cache[parent_hex]
                 
                 # Extract the very first 3-hour block (This is our "Current" operational weather)
                 current_block = forecast_data.get('list', [])[0]
@@ -102,7 +110,8 @@ class WeatherCronJob:
                 
                 forecast_ts = datetime.fromtimestamp(current_block.get('dt'), timezone.utc).isoformat()
                 unique_telemetry_id = f"WT-{uuid.uuid4().hex[:6].upper()}"
-                # Build the Database Row (Notice: 'created_at' is completely removed)
+                
+                # Build the Database Row mapping the weather to the specific CHILD hex
                 records_to_insert.append({
                     "telemetry_id": unique_telemetry_id,
                     "Rain": rain_vol,
@@ -114,7 +123,7 @@ class WeatherCronJob:
                     "temp": temp
                 })
                 
-                print(f"   {Colors.BLUE}🌤️  Processed {zone_name} | PoP: {pop*100}% | Temp: {temp}°C{Colors.ENDC}")
+                print(f"   {Colors.BLUE}🌤️  Processed {zone_name} (Child of {parent_hex}) | PoP: {pop*100}% | Temp: {temp}°C{Colors.ENDC}")
 
             except Exception as e:
                 print(f"{Colors.FAIL}❌ Failed to fetch/parse weather for {hex_id}: {e}{Colors.ENDC}")
