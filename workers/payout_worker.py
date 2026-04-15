@@ -4,10 +4,14 @@ import sys
 import random
 from supabase import create_client, Client
 
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(root_dir)
+
 from config import SUPABASE_DB_URL
 from config import SUPABASE_API_KEY
 
 supabase: Client = create_client(SUPABASE_DB_URL, SUPABASE_API_KEY)
+
 
 class Colors:
     HEADER = '\033[95m'

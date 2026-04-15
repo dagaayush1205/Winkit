@@ -2,6 +2,11 @@ import os
 import statistics
 import json
 from supabase import create_client, Client
+import sys
+
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(root_dir)
+
 from config import SUPABASE_DB_URL
 from config import SUPABASE_API_KEY
 import h3

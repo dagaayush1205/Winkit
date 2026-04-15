@@ -6,7 +6,9 @@ import os
 
 class TelemetryFraudModel:
     def __init__(self):
-        self.model_path = "engine/ml_fraud/isolation_forest.pkl"
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        self.model_path = os.path.join(current_dir, "isolation_forest.pkl")
+        
         self.model = None
         
         # Load or train the model immediately
