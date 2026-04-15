@@ -314,31 +314,37 @@ LaunchedEffect(workerId) {
                 )
             }
             // ── RELOCATION MODAL ──
-            // ── RELOCATION MODAL ──
             if (showRelocationModal) {
                 com.example.winkit.ui.screens.alerts.RelocationAlertModal(
                     onAccept = {
                         showRelocationModal = false
-
-                        coroutineScope.launch {
+                        
+                        // 🔥 FIX: Force network call to the Background Thread (IO) so the UI doesn't hang!
+                        coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                             try {
-                                // 🔥 FIXED: Using correct Capitalized classes and parameters
                                 val relocationEvent = com.example.winkit.data.RelocationInsert(
                                     worker_id = workerId,
                                     from_zone = "Velachery",
                                     to_zone = "Adyar Hub",
                                     bonus_amount = 150
                                 )
+                                // This now runs safely in the background
                                 com.example.winkit.data.NetworkModule.api.insertRelocationEvent(relocationEvent)
-                                Toast.makeText(context, tr("routing to adyar. ₹150 bonus locked!"), Toast.LENGTH_LONG).show()
+                                
+                                // Switch back to Main thread ONLY to show the Toast
+                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                    Toast.makeText(context, tr("routing to adyar. ₹150 bonus locked!"), Toast.LENGTH_LONG).show()
+                                }
                             } catch (e: Exception) {
-                                Toast.makeText(context, tr("error accepting route:") + " ${e.message}", Toast.LENGTH_SHORT).show()
+                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                    Toast.makeText(context, tr("error accepting route:") + " ${e.message}", Toast.LENGTH_SHORT).show()
+                                }
                             }
                         }
                     },
                     onDismiss = { showRelocationModal = false }
                 )
-            }       // ── CHATBOT SHEET (Floats on top of the UI) ──
+            }      // ── CHATBOT SHEET (Floats on top of the UI) ──
             if (showChatbot) {
                 WinkitChatbotSheet(onDismiss = { showChatbot = false })
             }

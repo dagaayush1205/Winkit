@@ -11,26 +11,29 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.example.winkit.utils.LocalVoiceAssistant // JARVIS IMPORT
 
 @Composable
 fun ShiftSafeBottomNav(navController: NavController) {
-    // Observes the current navigation state to highlight the correct icon
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    
+    // Summon JARVIS
+    val voice = LocalVoiceAssistant.current 
 
     NavigationBar(
         containerColor = Color.White,
         tonalElevation = 8.dp
     ) {
-        // --- HOME / DASHBOARD TAB ---
+        // --- 1. HOME / DASHBOARD TAB ---
         NavigationBarItem(
             icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
             label = { Text("Home") },
             selected = currentRoute == "dashboard",
             onClick = {
                 if (currentRoute != "dashboard") {
+                    voice.speak("Opening Dashboard") // JARVIS Speaks
                     navController.navigate("dashboard") {
-                        // Clears backstack to dashboard to prevent "back button loops"
                         popUpTo("dashboard") { inclusive = true }
                         launchSingleTop = true
                     }
@@ -45,15 +48,15 @@ fun ShiftSafeBottomNav(navController: NavController) {
             )
         )
 
-        // --- WALLET TAB ---
+        // --- 2. WALLET TAB ---
         NavigationBarItem(
             icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = "Wallet") },
             label = { Text("Wallet") },
             selected = currentRoute == "wallet",
             onClick = {
                 if (currentRoute != "wallet") {
+                    voice.speak("Opening Wallet Balance") // JARVIS Speaks
                     navController.navigate("wallet") {
-                        // Ensures we don't build multiple instances of the same screen
                         popUpTo("dashboard")
                         launchSingleTop = true
                     }
@@ -68,15 +71,15 @@ fun ShiftSafeBottomNav(navController: NavController) {
             )
         )
 
-        // --- PROFILE TAB ---
+        // --- 3. PROFILE TAB ---
         NavigationBarItem(
             icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
             label = { Text("Profile") },
             selected = currentRoute == "profile",
             onClick = {
                 if (currentRoute != "profile") {
+                    voice.speak("Opening Profile") // JARVIS Speaks
                     navController.navigate("profile") {
-                        // Standard professional behavior: root to dashboard
                         popUpTo("dashboard")
                         launchSingleTop = true
                     }

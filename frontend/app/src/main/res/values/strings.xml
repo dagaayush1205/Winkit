@@ -1,3 +1,26 @@
 <resources>
-    <string name="app_name">WinkIt</string>
+    <string name="app_name">WinkIT</string>
+    
+    <string name="login_title">WinkIT\nInstant Payout in a WINK</string>
+    <string name="login_subtitle">Enter your registered number to get started with your active delivery coverage</string>
+    <string name="phone_number">PHONE NUMBER</string>
+    <string name="send_otp">Send OTP</string>
+    <string name="verify_login">Verify &amp; Login</string>
+    <string name="terms_policy">Terms of Service  •  Privacy Policy</string>
+
+    <string name="welcome_back">Welcome back,</string>
+    <string name="stuck_hazard">Stuck in a Hazard?</string>
+    <string name="report_hazard_desc">Report flooded roads or curfew to initiate manual review.</string>
+    <string name="report_btn">Report</string>
+    <string name="trigger_relocation">Trigger Relocation</string>
+
+    <string name="wallet">Wallet</string>
+    <string name="wallet_balance">Wallet Balance</string>
+    <string name="total_earnings">Total Earnings</string>
+    <string name="total_payouts">Total Payouts</string>
+    <string name="insurance_status">Insurance Status</string>
+    <string name="active">ACTIVE</string>
+
+    <string name="language">Language / भाषा / ಕನ್ನಡ / மொழி</string>
+    <string name="log_out">Log Out</string>
 </resources>

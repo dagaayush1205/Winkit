@@ -1,5 +1,6 @@
 package com.example.winkit.ui.screens.dashboard
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -19,7 +20,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.winkit.data.NetworkModule
 import com.example.winkit.utils.tr
-import kotlinx.coroutines.delay
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,27 +31,47 @@ fun ActivePolicyScreen(workerId: String, onBack: () -> Unit) {
 
     LaunchedEffect(Unit) {
         try {
-            // Fetch ONLY this worker's ACTIVE policy from weekly_policies
+            // Fetch ALL policies marked ACTIVE for this worker
             val response = NetworkModule.api.getActivePolicies(workerId = "eq.$workerId", status = "eq.ACTIVE")
+            
             if (response.isNotEmpty()) {
-                val policy = response.first()
-                policyDetails = mapOf(
-                    "policyId" to (policy.policy_id ?: "POL-UNKNOWN"),
-                    "startDate" to (policy.week_start_date ?: "N/A"),
-                    "endDate" to (policy.week_end_date ?: "N/A"),
-                    "premium" to (policy.premium_paid?.toString() ?: "0"),
-                    "coverage" to (policy.max_daily_coverage?.toString() ?: "0")
-                )
+                val today = LocalDate.now()
+                
+                // 🔥 STRICT ACTUARIAL FILTER: Filter out dates in the past
+                val validPolicy = response.filter { policy ->
+                    try {
+                        // Assuming your DB sends dates like "2026-04-10"
+                        val endDateStr = policy.week_end_date?.substring(0, 10) ?: ""
+                        if (endDateStr.isNotEmpty()) {
+                            val endDate = LocalDate.parse(endDateStr)
+                            !endDate.isBefore(today) // Keep only if endDate is today or in the future
+                        } else {
+                            false
+                        }
+                    } catch (e: Exception) {
+                        Log.e("ActivePolicyScreen", "Date parse error: ${e.message}")
+                        false
+                    }
+                }.maxByOrNull { it.created_at ?: "" } // Grab the most recently created one if multiple exist
+
+                if (validPolicy != null) {
+                    policyDetails = mapOf(
+                        "policyId" to (validPolicy.policy_id ?: "POL-UNKNOWN"),
+                        "startDate" to (validPolicy.week_start_date ?: "N/A"),
+                        "endDate" to (validPolicy.week_end_date ?: "N/A"),
+                        "premium" to (validPolicy.premium_paid?.toString() ?: "0"),
+                        "coverage" to (validPolicy.max_daily_coverage?.toString() ?: "0")
+                    )
+                } else {
+                    // No valid policies found after date filter
+                    policyDetails = null
+                }
             }
         } catch (e: Exception) {
-            // Fallback for hackathon demo if API fails
-            policyDetails = mapOf(
-                "policyId" to "POL-9002",
-                "startDate" to "2026-03-28",
-                "endDate" to "2026-04-04",
-                "premium" to "75",
-                "coverage" to "800"
-            )
+            Log.e("ActivePolicyScreen", "Network error: ${e.message}")
+            // DO NOT USE FALLBACK DATA FOR THE DEMO!
+            // If it fails, it's better to show "No Active Policy" than fake data that might confuse you during the pitch.
+            policyDetails = null
         } finally {
             isLoading = false
         }
@@ -99,6 +121,7 @@ fun ActivePolicyScreen(workerId: String, onBack: () -> Unit) {
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Column {
+                                // 🔥 Dark Mode Protection: color = Color(0xFF1A1A2E)
                                 Text("Gig Protect Weekly", fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color(0xFF1A1A2E))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF4CAF50), modifier = Modifier.size(12.dp))
@@ -109,7 +132,7 @@ fun ActivePolicyScreen(workerId: String, onBack: () -> Unit) {
                         }
 
                         Spacer(modifier = Modifier.height(24.dp))
-                        Divider(color = Color(0xFFE0E6ED))
+                        HorizontalDivider(color = Color(0xFFE0E6ED)) // 🔥 Updated to HorizontalDivider
                         Spacer(modifier = Modifier.height(24.dp))
 
                         // Details Grid
@@ -151,6 +174,7 @@ fun PolicyDetailItem(label: String, value: String) {
     Column {
         Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF8E8E9A))
         Spacer(modifier = Modifier.height(4.dp))
+        // 🔥 Dark Mode Protection
         Text(value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1A2E))
     }
 }

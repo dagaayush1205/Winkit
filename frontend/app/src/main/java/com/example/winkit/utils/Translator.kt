@@ -3,6 +3,7 @@ package com.example.winkit.utils
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import android.content.Context
 
 // 🔥 A top-level helper function so you don't have to type "Translator.tr()" everywhere
 fun tr(englishText: String): String {
@@ -12,8 +13,23 @@ fun tr(englishText: String): String {
 
 object Translator {
     // This state variable tells Jetpack Compose to instantly redraw the screen when it changes!
-    var currentLang by mutableStateOf("en") 
+    var currentLang by mutableStateOf("en")
+    
+    private const val PREFS_NAME = "winkit_prefs"
+    private const val LANG_KEY = "selected_language"
 
+    // Call this when the app starts (e.g., in MainActivity)
+    fun loadLanguage(context: Context) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        currentLang = prefs.getString(LANG_KEY, "en") ?: "en"
+    }
+
+    // Call this whenever a user clicks a language button
+    fun setLanguage(context: Context, lang: String) {
+        currentLang = lang
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(LANG_KEY, lang).apply()
+    }
     val dictionary = mapOf(
         "hi" to mapOf(
             "Wallet Balance" to "वॉलेट बैलेंस",
