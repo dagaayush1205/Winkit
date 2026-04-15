@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, BarChart3, ShieldCheck, Settings, LogOut, Zap, Users } from 'lucide-react';
+import { Activity, BarChart3, ShieldCheck, Settings, LogOut, Zap, Users, Database } from 'lucide-react'; // 🔥 Added Database import
 import SidebarItem from './SidebarItem';
 
 const Sidebar = ({ activeView, setActiveView, triggerMockAction }) => {
@@ -12,17 +12,18 @@ const Sidebar = ({ activeView, setActiveView, triggerMockAction }) => {
       </div>
       <div className="flex-1 flex flex-col py-4">
         <SidebarItem icon={Activity} label="Live" active={activeView === 'live'} onClick={() => setActiveView('live')} />
-        <SidebarItem icon={BarChart3} label="Database" active={activeView === 'risk'} onClick={() => setActiveView('risk')} />
         
-        {/* NEW PROFILES TAB */}
+        {/* 🔥 YOUR OLD PAGE: Now correctly labeled as Risk/Claims */}
+        <SidebarItem icon={BarChart3} label="Risk" active={activeView === 'risk'} onClick={() => setActiveView('risk')} />
+        
+        {/* 🔥 YOUR NEW PAGE: The God Mode Database Ledger */}
+        <SidebarItem icon={Database} label="Ledger" active={activeView === 'ledger'} onClick={() => setActiveView('ledger')} />
+        
         <SidebarItem icon={Users} label="Profiles" active={activeView === 'profiles'} onClick={() => setActiveView('profiles')} />
-        
         <SidebarItem icon={ShieldCheck} label="Fraud" active={activeView === 'fraud'} onClick={() => setActiveView('fraud')} />
       </div>
       <div className="border-t border-slate-100 dark:border-slate-800 py-4">
         <SidebarItem icon={Settings} label="Config" active={activeView === 'config'} onClick={() => setActiveView('config')} />
-        
-        {/* EXIT BUTTON TRIGGERING LOGOUT */}
         <SidebarItem icon={LogOut} label="Exit" onClick={() => triggerMockAction('Logout Sequence')} />
       </div>
     </nav>

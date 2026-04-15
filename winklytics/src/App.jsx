@@ -6,7 +6,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from './lib/utils';
 import { supabase } from './supabase';
-
+import DatabaseLedger from './components/DatabaseLedger';
 // Components
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -241,16 +241,20 @@ export default function App() {
 
           {/* ROUTING FOR OTHER MODULES */}
           {activeView === 'fraud' && <FraudTable data={fraudData} loading={loading} triggerMockAction={triggerMockAction} />}
-          {activeView === 'risk' && <RiskModule />}
+          
+          {/* 🔥 Your Old Page */}
+          {activeView === 'risk' && <RiskModule />} 
+          
+          {/* 🔥 Your New Page */}
+          {activeView === 'ledger' && <DatabaseLedger />} 
+          
           {activeView === 'config' && <ConfigModule />}
-          {activeView === 'profiles' && <UserProfiles triggerMockAction={triggerMockAction} />}
-
-          {/* FALLBACK FOR UNBUILT MODULES */}
-          {activeView !== 'live' && activeView !== 'fraud' && activeView !== 'risk' && activeView !== 'config' && activeView !== 'profiles' && (
+          {activeView === 'profiles' && <UserProfiles triggerMockAction={triggerMockAction} />}          {/* FALLBACK FOR UNBUILT MODULES */}
+          {activeView !== 'live' && activeView !== 'fraud' && activeView !== 'risk' && activeView !== 'config' && activeView !== 'profiles' && activeView !== 'ledger' && (
             <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4">
-              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-300"><Settings size={32} /></div>
+              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-300"><Settings size={32} /></div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900 uppercase tracking-wider">{activeView} Module</h3>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">{activeView} Module</h3>
                 <p className="text-sm text-slate-400">This section is currently under development.</p>
               </div>
               <button onClick={() => setActiveView('live')} className="px-6 py-2 bg-blue-600 text-white text-xs font-bold uppercase rounded-lg">Return Home</button>
