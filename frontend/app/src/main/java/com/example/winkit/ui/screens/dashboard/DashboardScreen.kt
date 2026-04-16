@@ -155,7 +155,6 @@ LaunchedEffect(workerId) {
 
 
     Scaffold(
-        bottomBar = { ShiftSafeBottomNav(navController = navController) },
         containerColor = PageBg,
         floatingActionButton = { WinkitChatFab(onClick = { showChatbot = true }) },
         floatingActionButtonPosition = FabPosition.End
@@ -203,6 +202,10 @@ LaunchedEffect(workerId) {
                         )
                     }
                     true -> {
+                        ActivePoliciesSection(onPolicyClick = onPolicyClick)
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
                         Text(
                             text = tr("Live Risk Metrics"),
                             color = TextDark,
@@ -241,10 +244,6 @@ LaunchedEffect(workerId) {
                         HazardReportCard(
                             onReportClick = { showManualClaimDialog = true }
                         )
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        ActivePoliciesSection(onPolicyClick = onPolicyClick)
 
                       Spacer(modifier = Modifier.height(32.dp))
                         
@@ -358,18 +357,46 @@ fun WeatherBanner(name: String, walletBalance: Double, temp: String, condition: 
     val currentTime = remember {
         SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
     }
+    
+    // 1. Get the current hour (0-23)
+    val currentHour = remember { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) }
+    
+    val tempInt = temp.toIntOrNull() ?: 25
+    
+    // 2. Define Time of Day
+    val isDay = currentHour in 6..16 // 6 AM to 4 PM
+    val isEvening = currentHour in 17..18 // 5 PM to 6 PM
+    val isNight = currentHour >= 19 || currentHour < 6 // 7 PM to 5 AM
+
+    // 3. Define Weather Overrides
+    val isRaining = condition.contains("Rain", ignoreCase = true) || condition.contains("Storm", ignoreCase = true)
+    val isExtremeHeat = tempInt >= 35
+
+    // 4. Set the gradient colors based on time & weather
+    val dynamicGradient = when {
+        isRaining -> listOf(Color(0xFF37474F), Color(0xFF546E7A)) // Stormy Grey
+        isExtremeHeat -> listOf(Color(0xFFD32F2F), Color(0xFFFF7043)) // Heatwave Red
+        isDay -> listOf(Color(0xFF1E88E5), Color(0xFF64B5F6)) // Bright Day Sky Blue
+        isEvening -> listOf(Color(0xFFE65100), Color(0xFFFFB74D)) // Sunset Orange
+        else -> listOf(BannerStart, BannerEnd) // Night Premium Purple (Your default)
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(240.dp)
             .background(
-                brush = Brush.linearGradient(colors = listOf(BannerStart, BannerEnd)),
+                brush = Brush.linearGradient(colors = dynamicGradient),
                 shape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
             )
             .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
     ) {
-        StarField()
-       Text(
+        // Only show stars at night, and not during rain
+        if (isNight && !isRaining) {
+            StarField()
+        }
+        
+        Text(
             text = tr("Terms & Conditions"),
             color = Color.White.copy(alpha = 0.7f),
             fontSize = 11.sp,
@@ -379,6 +406,7 @@ fun WeatherBanner(name: String, walletBalance: Double, temp: String, condition: 
                 .padding(16.dp)
                 .clickable { onTermsClick() }
         )
+        
         Surface(
             modifier = Modifier.align(Alignment.TopEnd).padding(16.dp),
             color = Color.White.copy(alpha = 0.15f),
@@ -409,14 +437,43 @@ fun WeatherBanner(name: String, walletBalance: Double, temp: String, condition: 
         }
 
         Column(modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp, top = 40.dp), horizontalAlignment = Alignment.End) {
-            MoonCloudIllustration()
+            // Dynamic Illustration Logic
+            if (!isExtremeHeat) {
+                when {
+                    isDay -> SunCloudIllustration(sunColor = Color(0xFFFFD54F)) // Yellow Sun
+                    isEvening -> SunCloudIllustration(sunColor = Color(0xFFFF8A65)) // Orange Sunset
+                    else -> MoonCloudIllustration() // Night Moon
+                }
+            }
             Spacer(modifier = Modifier.height(10.dp))
             CoveragePill()
         }
     }
 }
 
+// ── Add this new Composable right below MoonCloudIllustration! ──
 @Composable
+fun SunCloudIllustration(sunColor: Color) {
+    Box(modifier = Modifier.size(width = 100.dp, height = 70.dp)) {
+        // The Sun
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .align(Alignment.TopCenter)
+                .clip(CircleShape)
+                .background(sunColor)
+        )
+        // The Cloud (Slightly brighter for daytime)
+        Box(
+            modifier = Modifier
+                .width(90.dp)
+                .height(32.dp)
+                .align(Alignment.BottomCenter)
+                .clip(RoundedCornerShape(50))
+                .background(Color.White.copy(alpha = 0.9f))
+        )
+    }
+}@Composable
 fun StarField() {
     Box(modifier = Modifier.fillMaxSize()) {
         val dots = listOf(0.15f to 0.08f, 0.7f to 0.05f, 0.85f to 0.15f, 0.05f to 0.5f, 0.6f to 0.35f, 0.9f to 0.55f)
@@ -520,6 +577,7 @@ fun GpsTrackingSection(
                         webViewClient = WebViewClient()
                         
                         // We inject the JSON string directly into the JS variable 'backendData'
+                        // We inject the JSON string directly into the JS variable 'backendData'
                         val htmlData = """
                             <!DOCTYPE html>
                             <html>
@@ -537,6 +595,7 @@ fun GpsTrackingSection(
                                         border-radius: 50%;
                                         box-shadow: 0 0 15px rgba(0, 229, 160, 0.8);
                                         animation: pulse 1.5s infinite cubic-bezier(0.66, 0, 0, 1);
+                                        border: 2px solid #FFFFFF; /* Added a white border to make it pop! */
                                     }
                                     @keyframes pulse {
                                         to { box-shadow: 0 0 0 40px rgba(0, 229, 160, 0); }
@@ -549,10 +608,8 @@ fun GpsTrackingSection(
                                 <script>
                                     const { DeckGL, H3HexagonLayer } = deck;
                                     
-                                    // Injecting the Kotlin JSON string
                                     const backendData = $zoneDataJson;
 
-                                    // Fallback dummy data just in case backend is empty during demo
                                     const mapData = backendData.length > 0 ? backendData : [
                                         { hex: '8961892a03bffff', risk: 0.8, height: 40 },
                                         { hex: '8961892a03bffff', risk: 0.2, height: 10 }
@@ -579,33 +636,36 @@ fun GpsTrackingSection(
                                         getElevation: d => d.height
                                     });
 
-                                    new DeckGL({
+                                    // 🔥 FIX 1: Assign DeckGL to a variable
+                                    const deckglInstance = new DeckGL({
                                         container: 'map-container',
                                         mapStyle: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
                                         initialViewState: {
                                             longitude: $liveLng,
                                             latitude: $liveLat,
-                                            zoom: 12.5,
-                                            pitch: 55, // Aggressive 3D angle
+                                            zoom: 13.5, // 🔥 Zoomed in a tiny bit more so the dot looks better
+                                            pitch: 55,
                                             bearing: 0
                                         },
                                         controller: true,
                                         layers: [hexagonLayer]
                                     });
 
-                                    // Rider Live Dot
+                                    // 🔥 FIX 2: Use the official getMapboxMap() method
                                     setTimeout(() => {
-                                        const map = document.querySelector('.maplibregl-map').maplibreglMap;
+                                        const map = deckglInstance.getMapboxMap();
                                         if(map) {
                                             const el = document.createElement('div');
                                             el.className = 'pulse-dot';
-                                            new maplibregl.Marker({element: el}).setLngLat([$liveLng, $liveLat]).addTo(map);
+                                            new maplibregl.Marker({element: el})
+                                                .setLngLat([$liveLng, $liveLat])
+                                                .addTo(map);
                                         }
-                                    }, 1500);
+                                    }, 1000);
                                 </script>
                             </body>
                             </html>
-                        """.trimIndent()
+                        """.trimIndent()                   
                         loadDataWithBaseURL("https://app.local/", htmlData, "text/html", "UTF-8", null)
                     }
                 }, modifier = Modifier.fillMaxSize())

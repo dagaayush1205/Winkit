@@ -64,7 +64,6 @@ fun ProfileScreen(workerId: String, navController: NavController) {
     }
 
     Scaffold(
-        bottomBar = { ShiftSafeBottomNav(navController = navController) },
         containerColor = Color(0xFFF3F4F8)
     ) { padding ->
         if (isLoading) {

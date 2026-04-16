@@ -57,7 +57,6 @@ fun WalletScreen(
     }
 
     Scaffold(
-        bottomBar = { ShiftSafeBottomNav(navController = navController) },
         containerColor = Color(0xFFF8F9FA),
         floatingActionButton = {
             FloatingActionButton(

@@ -11,20 +11,18 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
-// 🔥 Added LandingScreen import
+
 import com.example.winkit.ui.screens.LandingScreen 
+import com.example.winkit.ui.screens.MainPagerScreen // 🔥 Added MainPagerScreen import
 import com.example.winkit.ui.screens.alerts.RelocationAlertModal
 import com.example.winkit.ui.screens.checkout.PolicyCheckoutScreen
 import com.example.winkit.ui.screens.dashboard.DashboardViewModel
-import com.example.winkit.ui.screens.dashboard.ShiftSafeDashboard
 import com.example.winkit.ui.screens.onboarding.IntegrationScreen
 import com.example.winkit.ui.screens.onboarding.LoginScreen
 import com.example.winkit.ui.screens.onboarding.ScheduleScreen
 import com.example.winkit.ui.screens.onboarding.SignUpScreen
-import com.example.winkit.ui.screens.wallet.WalletScreen
 import com.example.winkit.ui.screens.dashboard.ActivePolicyScreen
 import com.example.winkit.ui.screens.wallet.WalletViewModel
-import com.example.winkit.ui.screens.profile.ProfileScreen
 
 @Composable
 fun AppNavigation(isLoggedIn: Boolean, sharedPref: SharedPreferences) {
@@ -37,8 +35,8 @@ fun AppNavigation(isLoggedIn: Boolean, sharedPref: SharedPreferences) {
 
     var activeWorkerId by remember { mutableStateOf(savedWorkerId ?: "") }
 
-    // 🔥 This correctly determines where to start
-    val startDest = if (savedWorkerId != null) "dashboard" else "landing"
+    // 🔥 Changed from "dashboard" to "main_tabs"
+    val startDest = if (savedWorkerId != null) "main_tabs" else "landing"
 
     NavHost(navController = navController, startDestination = startDest) {
 
@@ -67,9 +65,9 @@ fun AppNavigation(isLoggedIn: Boolean, sharedPref: SharedPreferences) {
             LoginScreen(
                 onLoginSuccess = { workerId ->
                     activeWorkerId = workerId
-                    // Existing users who are already set up go straight to dashboard
-                    navController.navigate("dashboard") {
-                        popUpTo("landing") { inclusive = true } // Clear backstack up to landing
+                    // 🔥 Redirect to main_tabs
+                    navController.navigate("main_tabs") {
+                        popUpTo("landing") { inclusive = true } 
                     }
                 },
                 onNavigateToSignUp = {
@@ -85,8 +83,6 @@ fun AppNavigation(isLoggedIn: Boolean, sharedPref: SharedPreferences) {
             IntegrationScreen(
                 onBack = { navController.popBackStack() },
                 onNext = { enteredId ->
-                    // If the user entered a partner ID during integration, update it.
-                    // Otherwise keep the workerId from sign-up.
                     if (enteredId.isNotBlank()) activeWorkerId = enteredId
                     navController.navigate("schedule")
                 }
@@ -109,54 +105,38 @@ fun AppNavigation(isLoggedIn: Boolean, sharedPref: SharedPreferences) {
                 workerId = activeWorkerId,
                 onBack = { navController.popBackStack() },
                 onPaymentSuccess = {
-                    navController.navigate("dashboard") {
+                    // 🔥 Redirect to main_tabs
+                    navController.navigate("main_tabs") {
                         popUpTo("signup") { inclusive = true }
-                        popUpTo("landing") { inclusive = true } // Clear out everything
+                        popUpTo("landing") { inclusive = true } 
                     }
                 }
             )
         }
 
-        // ── SCREEN 6: DASHBOARD ──────────────────────────────────────────
-        composable("dashboard") {
-            ShiftSafeDashboard(
+        // ── THE SWIPEABLE MAIN TABS (Replaces Dashboard, Wallet, Profile) ──
+        composable("main_tabs") {
+            MainPagerScreen(
                 workerId = activeWorkerId,
-                viewModel = dashboardViewModel,
                 navController = navController,
-                onTriggerAlert = { navController.navigate("alert") },
-                onPolicyClick = { navController.navigate("active_policy_screen") }
+                dashboardViewModel = dashboardViewModel,
+                walletViewModel = walletViewModel
             )
         }
         
+        // ── ACTIVE POLICY SUB-SCREEN ─────────────────────────────────────
         composable("active_policy_screen") {
             ActivePolicyScreen(
                 workerId = activeWorkerId,
-                onBack = { navController.popBackStack() } // Goes back to the dashboard
-            )
-        }
-        
-        // ── SCREEN 7: WALLET ─────────────────────────────────────────────
-        composable("wallet") {
-            WalletScreen(
-                workerId = activeWorkerId,
-                navController = navController,
-                viewModel = walletViewModel
+                onBack = { navController.popBackStack() } 
             )
         }
 
-        // ── SCREEN 8: DISASTER ALERT (dialog) ───────────────────────────
+        // ── DISASTER ALERT (dialog) ───────────────────────────
         dialog("alert") {
             RelocationAlertModal(
                 onAccept = { navController.popBackStack() },
                 onDismiss = { navController.popBackStack() }
-            )
-        }
-        
-        // ── SCREEN 9: PROFILE ────────────────────────────────────────────
-        composable("profile") {
-            ProfileScreen(
-                workerId = activeWorkerId,
-                navController = navController
             )
         }
     }
