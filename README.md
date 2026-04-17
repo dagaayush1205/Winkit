@@ -75,11 +75,14 @@ WinkIT is fully deployed and available for live evaluation.
 For a "Glass-Box" audit of our DigitalOcean Droplet and live Python daemons:
 
 - **Browser View:** http://168.144.23.23:8000/ (Instant log inspection)  
-- **Guest SSH:**  
+- **Guest SFTP:**  
   ```
-  ssh guest_viewer@168.144.23.23
+  sftp guest_viewer@168.144.23.23
   Password: astrobugs
   ```
+ > [!NOTE]  
+> SFTP access might be blocked depending on your corporate Wi-Fi or IT admin settings.
+
 
 ### **3. Mobile Evaluation**
 
