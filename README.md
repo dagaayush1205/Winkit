@@ -20,11 +20,14 @@ WinkIT is a high-performance, event-driven insurance engine that automates recov
 
 ## Phase 3: Major Technical Evolution
 
-- **Spatial Authority:** Migrated from circular geofencing to **Uber H3 Hexagonal Indexing (Res 8)** for uniform risk adjacency and spillover math.  
+- **Spatial Authority:** Migrated from circular geofencing to **Uber H3 Hexagonal Indexing (Res 8)** for uniform risk adjacency and spillover math. 
 - **The Fraud Fortress:** Implemented hardware-level **Sensor Fusion**—cross-referencing GPS velocity with raw IMU Accelerometer variance to eliminate location spoofing.  
 - **Omnichannel Scaling:** Expanded beyond the app to include **WhatsApp (Conversational AI)** and **IVR Voice Gateways** for feature-phone users.  
-- **Capital Solvency:** Introduced the **Hourly Drip-Feed Model** and **Asymptotic Pricing** ($20 - $49) to ensure 24% EBITDA margins.  
-
+- **Capital Solvency:** Introduced the **Hourly Drip-Feed Model** and **Asymptotic Pricing** ($20 - $49) to ensure 24% EBITDA margins.
+- **Codebase Refactoring:** Restructured the codebase to significantly enhance overall readability and maintainability.
+- **Optimized Weather Forecasting:** Implemented parent/child relationships within the Hex architecture to minimize redundant API calls.
+- **Trigger Optimization:** Refactored the trigger code implementation, successfully reducing database calls by 50%.
+- **Efficient Data Caching:** Introduced a dedicated database table to batch and store 7-day weather forecasts. Fetching a full week of data in a single request drastically reduces overall API calls to OpenWeather.
 ---
 
 ## Project Structure
