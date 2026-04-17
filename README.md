@@ -21,14 +21,11 @@ WinkIT is a high-performance, event-driven insurance engine that automates recov
 
 ## Phase 3: Major Technical Evolution
 
-- **Spatial Authority:** Migrated from circular geofencing to **Uber H3 Hexagonal Indexing (Res 8)** for uniform risk adjacency and spillover math. 
-- **The Fraud Fortress:** Implemented hardware-level **Sensor Fusion**—cross-referencing GPS velocity with raw IMU Accelerometer variance to eliminate location spoofing.  
-- **Omnichannel Scaling:** Expanded beyond the app to include **WhatsApp (Conversational AI)** and **IVR Voice Gateways** for feature-phone users.  
-- **Capital Solvency:** Introduced the **Hourly Drip-Feed Model** and **Asymptotic Pricing** ($20 - $49) to ensure 24% EBITDA margins.
-- **Codebase Refactoring:** Restructured the codebase to significantly enhance overall readability and maintainability.
-- **Optimized Weather Forecasting:** Implemented parent/child relationships within the Hex architecture to minimize redundant API calls.
-- **Trigger Optimization:** Refactored the trigger code implementation, successfully reducing database calls by 50%.
-- **Efficient Data Caching:** Introduced a dedicated database table to batch and store 7-day weather forecasts. Fetching a full week of data in a single request drastically reduces overall API calls to OpenWeather.
+* **Actuarial Solvency Engine:** Designed an **Asymptotic Pricing Curve** ($20–$49 bounds) and an **Hourly Drip-Feed Payout Model**, mathematically capping Maximum Probable Loss (MPL) to secure projected 24% EBITDA margins.<br><br>
+* **Spatial Risk Architecture:** Migrated from legacy circular geofencing to **Uber H3 Hexagonal Indexing (Resolution 8)**, enabling high-precision, uniform risk adjacency and contiguous spillover modeling.<br><br>
+* **"Fraud Fortress" Telemetry Audit:** Engineered hardware-level **Sensor Fusion**, cross-referencing GPS velocity against raw IMU accelerometer variance to deterministically block location-spoofing attacks.  <br><br>
+* **System Scalability & Optimization:** Overhauled backend orchestration by implementing parent-child H3 hex grouping and batch-caching 7-day weather forecasts. This heavily reduced external API dependency and optimized trigger logic to slash internal database calls by 50%.<br><br>
+* **Omnichannel Accessibility:** Expanded platform reach beyond standard mobile apps by deploying **WhatsApp Conversational AI** and **IVR Voice Gateways**, ensuring seamless smart-contract access for feature-phone users.<br><br>
 ---
 
 ## Project Structure
