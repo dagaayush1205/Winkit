@@ -33,15 +33,15 @@ WinkIT is a high-performance, event-driven insurance engine that automates recov
 ```bash
 WinkIT/
 ├── android-app/              # Kotlin & Jetpack Compose (The Sensor Layer)
-├── comms_engine
-│   ├── bots.py
+├── comms_engine              # Handles the whatsapp integration
+│   ├── bots.py                
 │   ├── main.py
 │   ├── requirements.txt
 │   └── test_send.py
 ├── engine
 │   ├── dynamic_pricing
 │   │   └──pricing_engine.py  # Calculates the premium
-│   └── ml_fraud
+│   └── ml_fraud              # Handles fraud detection using isolation forest
 │       ├── anomaly_model.py
 │       └── anomaly.py
 ├── scripts
