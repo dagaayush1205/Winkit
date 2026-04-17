@@ -15,6 +15,7 @@ WinkIT is a high-performance, event-driven insurance engine that automates recov
 | **Technical Whitepaper** | [Read Deep-Dive](https://www.google.com/search?q=YOUR_LINK_HERE) | Actuarial math, H3 logic, and P&L modeling. |
 | **Phase 2 Archive** | [Phase 2 README](https://www.google.com/search?q=YOUR_LINK_HERE) | Reference for project evolution. |
 | **Android APK** | [Download APK](https://www.google.com/search?q=YOUR_LINK_HERE) | v3.0 Stable Release (Use on Physical Device). |
+| **Admin Website** |[Visit Site](https://www.google.com/search?q=YOUR_LINK_HERE) | Admin website. |
 
 ---
 
