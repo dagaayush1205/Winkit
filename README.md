@@ -10,12 +10,13 @@ WinkIT is a high-performance, event-driven insurance engine that automates recov
 
 | Artifact | Access Link | Description |
 | :--- | :--- | :--- |
-| **Pitch Deck** | [View Presentation](https://www.google.com/search?q=YOUR_LINK_HERE) | High-level business & technical strategy. |
-| **Demo Video** | [Watch Video](https://www.google.com/search?q=YOUR_LINK_HERE) | 6-minute deep dive of App, Dashboard, & Backend. |
-| **Technical Whitepaper** | [Read Deep-Dive](https://www.google.com/search?q=YOUR_LINK_HERE) | Actuarial math, H3 logic, and P&L modeling. |
-| **Phase 2 Archive** | [Phase 2 README](https://www.google.com/search?q=YOUR_LINK_HERE) | Reference for project evolution. |
-| **Android APK** | [Download APK](https://www.google.com/search?q=YOUR_LINK_HERE) | v3.0 Stable Release (Use on Physical Device). |
-| **Admin Website** |[Visit Site](https://www.google.com/search?q=YOUR_LINK_HERE) | Admin website. |
+| **Pitch Deck** | [View Presentation](https://canva.link/fboquni75ssl4ak) | High-level business & technical strategy. |
+| **Pitch Deck- Drive Link** | [View Drive](https://drive.google.com/drive/folders/1GZz0DbDJU0JZtEcNFU4wQqZcjrE9vwSw?usp=sharing) | Complete Pitch Deck in Drive Link as stated. |
+| **Demo Video** | [Watch Video](https://www.google.com/search?q=YOUR_LINK_HERE) | 6-minute deep dive of App, Dashboard, & Backend. | 
+| **Technical Whitepaper** | [Read Deep-Dive](https://docs.google.com/document/d/e/2PACX-1vR8PqYqQ7xbCcqZ9nFQ5lvzdfN5gWqFSRSoj0ttgbW35QwjcTlSQyTux6_k6V0UXB-oFjCfydShde-5/pub) | Actuarial math, H3 logic, and P&L modeling. |
+| **Phase 2 Archive** | [Phase 2 README](Phase2_README.md) | Reference for project evolution. |
+| **Android APK** | [Download APK](https://github.com/dagaayush1205/Winkit/releases) | v3.0 Stable Release (Use on Physical Device). |
+| **Admin Website** |[Visit Site](https://winkitlytics.vercel.app/) | Admin website. |
 
 ---
 
@@ -53,7 +54,7 @@ WinkIT/
 │   ├── fraud_worker.py       # Determines users gaming the system
 │   ├── payout_worker.py      # Creates Payments
 │   └── trigger_worker.py     # Triggers Disruption
-└── winklytics-web/       # Next.js & Deck.gl (Actuarial Command Center)
+└── winklytics-web/       # Vite.js & Deck.gl (Actuarial Command Center)
 ```
 
 ---
@@ -83,9 +84,10 @@ For a "Glass-Box" audit of our DigitalOcean Droplet and live Python daemons:
 
 ### **3. Mobile Evaluation**
 
-- **Fast Track:** Install APK on a **Physical Device**.  
-- **Login:** `9876543210`  
-- **Platform ID:** `ZEP-1001` (Rahul Sharma)  
+- Download the `app-debug.apk` directly from our **[GitHub Releases](https://github.com/dagaayush1205/Winkit/releases)** page and install it on your Android device.
+- **Evaluator Login Credentials:**
+  * **The Pre-Configured Profile (Fast Track):** To instantly view a fully populated profile with an established Trust Score and history, log in using Phone: `9876543210` and Platform ID: `ZEP-1001` (Rahul Sharma).
+  * **The Cold-Start Experience:** To test the onboarding flow and our introductory premium generation, log in with your own phone number and create a unique mock Platform ID (e.g., `BLNK-9999`).
 - **Developer Note:** Emulators will trigger a "Mock Location" rejection state by the Fraud Fortress.  
 
 ---
