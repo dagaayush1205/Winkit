@@ -34,12 +34,27 @@ WinkIT is a high-performance, event-driven insurance engine that automates recov
 
 ```bash
 WinkIT/
-├── android-app/          # Kotlin & Jetpack Compose (The Sensor Layer)
-├── backend-engine/       # FastAPI, H3 Oracles, & Payout Daemons
-│   ├── daemons/          # trigger.py & payout_worker.py
-│   ├── actuarial/        # pricing_engine.py & fraud_evaluator.py
-│   └── logs/             # Live execution audit trails
-├── shared-config/        # H3 grid definitions & environment mapping
+├── android-app/              # Kotlin & Jetpack Compose (The Sensor Layer)
+├── comms_engine
+│   ├── bots.py
+│   ├── main.py
+│   ├── requirements.txt
+│   └── test_send.py
+├── engine
+│   ├── dynamic_pricing
+│   │   └──pricing_engine.py  # Calculates the premium
+│   └── ml_fraud
+│       ├── anomaly_model.py
+│       └── anomaly.py
+├── scripts
+│   └── seed_h3_grid.py       # Created a starter set of hex index
+├── services
+|   ├── civic_risk_agent.py   # calculates the civic risk
+|   └── weather_api_client.py # weather forecast
+├── workers
+|   ├── fraud_worker.py       # Determines users gaming the system
+|   ├── payout_worker.py      # Creates Payments
+|   └── trigger_worker.py     # Triggers Disruption
 └── winklytics-web/       # Next.js & Deck.gl (Actuarial Command Center)
 ```
 
