@@ -12,7 +12,7 @@ WinkIT is a high-performance, event-driven insurance engine that automates recov
 | :--- | :--- | :--- |
 | **Pitch Deck** | [View Presentation](https://canva.link/fboquni75ssl4ak) | High-level business & technical strategy. |
 | **Pitch Deck- Drive Link** | [View Drive](https://drive.google.com/drive/folders/1GZz0DbDJU0JZtEcNFU4wQqZcjrE9vwSw?usp=sharing) | Complete Pitch Deck in Drive Link as stated. |
-| **Demo Video** | [Watch Video](https://www.google.com/search?q=YOUR_LINK_HERE) | 6-minute deep dive of App, Dashboard, & Backend. | 
+| **Demo Video** | [Watch Video](https://www.youtube.com/watch?v=NH8OWp2RXog) | 6-minute deep dive of App, Dashboard, & Backend. | 
 | **Technical Whitepaper** | [Read Deep-Dive](https://docs.google.com/document/d/e/2PACX-1vR8PqYqQ7xbCcqZ9nFQ5lvzdfN5gWqFSRSoj0ttgbW35QwjcTlSQyTux6_k6V0UXB-oFjCfydShde-5/pub) | Actuarial math, H3 logic, and P&L modeling. |
 | **Phase 2 Archive** | [Phase 2 README](Phase2_README.md) | Reference for project evolution. |
 | **Android APK** | [Download APK](https://github.com/dagaayush1205/Winkit/releases) | v3.0 Stable Release (Use on Physical Device). |
