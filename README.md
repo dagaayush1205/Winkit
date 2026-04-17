@@ -50,12 +50,12 @@ WinkIT/
 ├── scripts
 │   └── seed_h3_grid.py       # Created a starter set of hex index
 ├── services
-|   ├── civic_risk_agent.py   # calculates the civic risk
-|   └── weather_api_client.py # weather forecast
+│   ├── civic_risk_agent.py   # calculates the civic risk
+│   └── weather_api_client.py # weather forecast
 ├── workers
-|   ├── fraud_worker.py       # Determines users gaming the system
-|   ├── payout_worker.py      # Creates Payments
-|   └── trigger_worker.py     # Triggers Disruption
+│   ├── fraud_worker.py       # Determines users gaming the system
+│   ├── payout_worker.py      # Creates Payments
+│   └── trigger_worker.py     # Triggers Disruption
 └── winklytics-web/       # Next.js & Deck.gl (Actuarial Command Center)
 ```
 
@@ -95,12 +95,14 @@ For a "Glass-Box" audit of our DigitalOcean Droplet and live Python daemons:
 
 ## The Tech Stack
 
-- **Frontend:** Kotlin, Jetpack Compose, Deck.gl  
-- **Backend:** Python (FastAPI), DigitalOcean Droplet  
-- **Database:** Supabase (PostgreSQL), Real-time WebSockets, RLS Security  
-- **Geospatial:** Uber H3 Indexing  
-- **AI/Voice:** Cerebras (Llama 3.1 Inference), Twilio API  
-- **Payments:** Cashfree Payouts API Integration  
+| Category | Technologies |
+| :--- | :--- |
+| **Frontend** | Kotlin, Jetpack Compose, Deck.gl |
+| **Backend** | Python (FastAPI), DigitalOcean Droplet |
+| **Database** | Supabase (PostgreSQL), Real-time WebSockets, RLS Security |
+| **Geospatial** | Uber H3 Indexing |
+| **AI/Voice** | Cerebras (Llama 3.1 Inference), Twilio API |
+| **Payments** | Cashfree Payouts API Integration |
 
 ---
 
