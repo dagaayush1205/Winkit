@@ -30,6 +30,9 @@ android {
         buildConfigField("String", "OPENWEATHER_API_KEY", "\"$weatherKey\"")
         buildConfigField("String", "GEMINI_API_KEY", "\"${localProperties.getProperty("GEMINI_API_KEY")}\"")
         buildConfigField("String", "RAZORPAY_KEY", "\"${project.findProperty("RAZORPAY_KEY_ID")}\"")
+        buildConfigField("String", "CASHFREE_APP_ID", "\"${localProperties.getProperty("CASHFREE_APP_ID")}\"")
+        buildConfigField("String", "CASHFREE_SECRET_KEY", "\"${localProperties.getProperty("CASHFREE_SECRET_KEY")}\"")
+
     }
 
     buildTypes {
@@ -71,6 +74,7 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.razorpay:checkout:1.6.40")
+    implementation("com.cashfree.pg:api:2.3.2")
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)

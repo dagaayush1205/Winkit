@@ -1,10 +1,12 @@
 package com.example.winkit.ui.screens.checkout
 
+import android.app.Activity
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,23 +24,35 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import android.util.Log
 import com.example.winkit.data.NetworkModule
 import com.example.winkit.data.WeeklyPolicyInsert
+import com.example.winkit.BuildConfig
+import com.example.winkit.PaymentEventManager // 🔥 Imports our new bridge!
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import com.example.winkit.utils.tr
 import java.util.Locale
+
+// 🔥 CASHFREE & NETWORK IMPORTS
+import com.cashfree.pg.api.CFPaymentGatewayService
+import com.cashfree.pg.core.api.CFSession
+import com.cashfree.pg.core.api.webcheckout.CFWebCheckoutTheme
+import com.cashfree.pg.core.api.webcheckout.CFWebCheckoutPayment
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 
 enum class CheckoutStep {
     ANALYZING, OFFER, PROCESSING_PAYMENT, SUCCESS
@@ -50,22 +64,32 @@ fun PolicyCheckoutScreen(workerId: String, onBack: () -> Unit, onPaymentSuccess:
     var weeklyPremium by remember { mutableStateOf("...") }
     var maxPayout by remember { mutableStateOf("...") }
 
+    // 🔥 LISTENS FOR THE SUCCESS SIGNAL FROM MAINACTIVITY
+    val isCashfreeSuccess by PaymentEventManager.paymentSuccess
+
+    LaunchedEffect(isCashfreeSuccess) {
+        if (isCashfreeSuccess) {
+            PaymentEventManager.paymentSuccess.value = false // Reset it
+            currentStep = CheckoutStep.PROCESSING_PAYMENT    // Trigger DB Insert & UI
+        }
+    }
+
     LaunchedEffect(Unit) {
         try {
             val responseList = NetworkModule.api.getWorkerCharges(workerId = "eq.$workerId")
             if (responseList.isNotEmpty()) {
                 val charge = responseList.first()
-                weeklyPremium = charge.premium?.toInt()?.toString() ?: "132"
+                weeklyPremium = charge.premium?.toInt()?.toString() ?: "49"
                 maxPayout = "800"
             } else {
-                weeklyPremium = "132"
+                weeklyPremium = "49"
                 maxPayout = "800"
             }
             delay(1500)
             currentStep = CheckoutStep.OFFER
         } catch (e: Exception) {
             Log.e("SupabaseError", "Failed to fetch charges: ${e.message}")
-            weeklyPremium = "132"
+            weeklyPremium = "49"
             maxPayout = "800"
             delay(1500)
             currentStep = CheckoutStep.OFFER
@@ -77,7 +101,6 @@ fun PolicyCheckoutScreen(workerId: String, onBack: () -> Unit, onPaymentSuccess:
             CheckoutStep.PROCESSING_PAYMENT -> {
                 delay(2000)
                 try {
-                    // 1. Generate the unique ID and Dates
                     val policyId = "POL-${System.currentTimeMillis().toString().takeLast(4)}"
                     val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                     val cal = Calendar.getInstance()
@@ -85,7 +108,6 @@ fun PolicyCheckoutScreen(workerId: String, onBack: () -> Unit, onPaymentSuccess:
                     cal.add(Calendar.DAY_OF_YEAR, 7)
                     val endDate = formatter.format(cal.time)
 
-                    // 2. Use the updated 7-parameter Data Class
                     val newPolicy = WeeklyPolicyInsert(
                         policy_id = policyId,
                         worker_id = workerId,
@@ -106,26 +128,22 @@ fun PolicyCheckoutScreen(workerId: String, onBack: () -> Unit, onPaymentSuccess:
         }
     }
 
-    // MAIN UI BOX
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF5F7FA))) {
-
         Crossfade(targetState = currentStep, animationSpec = tween(800), label = "screen_fade") { step ->
             when (step) {
-                CheckoutStep.ANALYZING -> {
-                    AiAnalyzingView()
-                }
+                CheckoutStep.ANALYZING -> AiAnalyzingView()
                 CheckoutStep.OFFER, CheckoutStep.PROCESSING_PAYMENT, CheckoutStep.SUCCESS -> {
                     PolicyOfferView(
+                        workerId = workerId,
                         weeklyPremium = weeklyPremium,
                         maxPayout = maxPayout,
                         onBack = onBack,
-                        onSwipeComplete = { currentStep = CheckoutStep.PROCESSING_PAYMENT }
+                        onProceedToProcessing = { currentStep = CheckoutStep.PROCESSING_PAYMENT }
                     )
                 }
             }
         }
 
-        // OVERLAY: PAYMENT CONFIRMATION
         if (currentStep == CheckoutStep.PROCESSING_PAYMENT || currentStep == CheckoutStep.SUCCESS) {
             Box(
                 modifier = Modifier
@@ -156,10 +174,9 @@ fun PolicyCheckoutScreen(workerId: String, onBack: () -> Unit, onPaymentSuccess:
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(tr("Your coverage is now active."), fontSize = 14.sp, color = Color.Gray)
 
-                            // 🔥 FALLBACK BUTTON ADDED HERE 🔥
                             Spacer(modifier = Modifier.height(24.dp))
                             Button(
-                                onClick = onPaymentSuccess, // THIS TRIGGERS THE NAVIGATION!
+                                onClick = onPaymentSuccess,
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
                                 modifier = Modifier.fillMaxWidth().height(50.dp),
                                 shape = RoundedCornerShape(12.dp)
@@ -174,7 +191,6 @@ fun PolicyCheckoutScreen(workerId: String, onBack: () -> Unit, onPaymentSuccess:
     }
 }
 
-// ─── 1. THE AI ANALYZING ANIMATION ─────────────────────────────────────────
 @Composable
 fun AiAnalyzingView() {
     val loadingPhrases = listOf(
@@ -195,14 +211,12 @@ fun AiAnalyzingView() {
 
     val infiniteTransition = rememberInfiniteTransition(label = "radar")
     val scale by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
-        targetValue = 2.5f,
+        initialValue = 0.5f, targetValue = 2.5f,
         animationSpec = infiniteRepeatable(animation = tween(1500, easing = LinearOutSlowInEasing), repeatMode = RepeatMode.Restart),
         label = "scale"
     )
     val alpha by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 0f,
+        initialValue = 1f, targetValue = 0f,
         animationSpec = infiniteRepeatable(animation = tween(1500, easing = LinearOutSlowInEasing), repeatMode = RepeatMode.Restart),
         label = "alpha"
     )
@@ -213,18 +227,8 @@ fun AiAnalyzingView() {
         verticalArrangement = Arrangement.Center
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.size(200.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .scale(scale)
-                    .alpha(alpha)
-                    .background(Color(0xFF00E5A0), CircleShape)
-            )
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .background(Color.White, CircleShape)
-            ) {
+            Box(modifier = Modifier.size(100.dp).scale(scale).alpha(alpha).background(Color(0xFF00E5A0), CircleShape))
+            Box(modifier = Modifier.size(64.dp).background(Color.White, CircleShape)) {
                 Icon(Icons.Default.Security, contentDescription = null, tint = Color(0xFF0A192F), modifier = Modifier.align(Alignment.Center).size(32.dp))
             }
         }
@@ -236,20 +240,19 @@ fun AiAnalyzingView() {
     }
 }
 
-// ─── 2. THE POLICY OFFER UI ────────────────────────────────────────────────
 @Composable
-fun PolicyOfferView(weeklyPremium: String, maxPayout: String, onBack: () -> Unit, onSwipeComplete: () -> Unit) {
+fun PolicyOfferView(workerId: String, weeklyPremium: String, maxPayout: String, onBack: () -> Unit, onProceedToProcessing: () -> Unit) {
+    val context = LocalContext.current
+    var isCashfreeLoading by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
     Box(modifier = Modifier.fillMaxSize()) {
         val gradientBrush = Brush.verticalGradient(listOf(Color(0xFF0A2A59), Color(0xFF006C7A)))
 
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.35f)
+            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.35f)
                 .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
-                .background(gradientBrush)
-                .padding(24.dp)
-                .systemBarsPadding()
+                .background(gradientBrush).padding(24.dp).systemBarsPadding()
         ) {
             Column {
                 IconButton(onClick = onBack, modifier = Modifier.offset(x = (-12).dp)) {
@@ -263,40 +266,22 @@ fun PolicyOfferView(weeklyPremium: String, maxPayout: String, onBack: () -> Unit
         }
 
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 160.dp)
-                .padding(horizontal = 24.dp),
+            modifier = Modifier.fillMaxSize().padding(top = 160.dp).padding(horizontal = 24.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                Surface(
-                    shape = RoundedCornerShape(24.dp),
-                    color = Color.White,
-                    shadowElevation = 8.dp,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                Surface(shape = RoundedCornerShape(24.dp), color = Color.White, shadowElevation = 8.dp, modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(24.dp)) {
                         Spacer(modifier = Modifier.height(12.dp))
-
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color = Color(0xFFF8F9FA),
-                                border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
-                                modifier = Modifier.weight(1f)
-                            ) {
+                            Surface(shape = RoundedCornerShape(16.dp), color = Color(0xFFF8F9FA), border = BorderStroke(1.dp, Color(0xFFE0E0E0)), modifier = Modifier.weight(1f)) {
                                 Column(modifier = Modifier.padding(16.dp)) {
                                     Text(tr("WEEKLY PREMIUM"), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text("₹$weeklyPremium", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color(0xFF0A192F))
                                 }
                             }
-                            Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color = Color(0xFFE8F5E9),
-                                modifier = Modifier.weight(1f)
-                            ) {
+                            Surface(shape = RoundedCornerShape(16.dp), color = Color(0xFFE8F5E9), modifier = Modifier.weight(1f)) {
                                 Column(modifier = Modifier.padding(16.dp)) {
                                     Text(tr("MAX PAYOUT"), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
                                     Spacer(modifier = Modifier.height(4.dp))
@@ -305,7 +290,6 @@ fun PolicyOfferView(weeklyPremium: String, maxPayout: String, onBack: () -> Unit
                                 }
                             }
                         }
-
                         Spacer(modifier = Modifier.height(24.dp))
                         CoverageRow("Covers extreme weather (heavy rain, heatwaves)")
                         Spacer(modifier = Modifier.height(12.dp))
@@ -314,30 +298,106 @@ fun PolicyOfferView(weeklyPremium: String, maxPayout: String, onBack: () -> Unit
                         CoverageRow("Instant payout to wallet")
                     }
                 }
-
                 Spacer(modifier = Modifier.height(16.dp))
-
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFFE3F2FD),
-                    border = BorderStroke(1.dp, Color(0xFFBBDEFB)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFE3F2FD), border = BorderStroke(1.dp, Color(0xFFBBDEFB)), modifier = Modifier.fillMaxWidth()) {
                     Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFF1976D2), modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = tr("This policy covers income loss only. It does not cover vehicle damage or medical expenses."),
-                            color = Color(0xFF0D47A1),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
+                        Text(text = tr("This policy covers income loss only. It does not cover vehicle damage or medical expenses."), color = Color(0xFF0D47A1), fontSize = 12.sp, fontWeight = FontWeight.Medium)
                     }
                 }
             }
 
-            Box(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp), contentAlignment = Alignment.Center) {
-                SwipeToPaySlider(weeklyPremium = weeklyPremium, onSwipeComplete = onSwipeComplete)
+            Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
+                // 1. DEV BYPASS BUTTON
+                Button(
+                    onClick = onProceedToProcessing,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E6ED)),
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text("Dev Bypass (Mock Success)", color = Color(0xFF5A7184), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // 🔥 2. DIRECT CASHFREE INTEGRATION
+                Button(
+                    onClick = {
+                        coroutineScope.launch {
+                            isCashfreeLoading = true
+                            try {
+                                val sessionData = withContext(Dispatchers.IO) {
+                                    val generatedOrderId = "ORDER_${workerId}_${System.currentTimeMillis()}"
+
+                                    val jsonPayload = JSONObject().apply {
+                                        put("order_amount", weeklyPremium.toDouble())
+                                        put("order_currency", "INR")
+                                        put("order_id", generatedOrderId)
+                                        put("customer_details", JSONObject().apply {
+                                            put("customer_id", workerId)
+                                            put("customer_phone", "9999999999")
+                                        })
+                                        put("order_meta", JSONObject().apply {
+                                            put("return_url", "https://winkit.local/payment")
+                                        })
+                                    }
+
+                                    val client = OkHttpClient()
+                                    val request = Request.Builder()
+                                        .url("https://sandbox.cashfree.com/pg/orders")
+                                        .post(jsonPayload.toString().toRequestBody("application/json".toMediaType()))
+                                        .addHeader("x-client-id", BuildConfig.CASHFREE_APP_ID)
+                                        .addHeader("x-client-secret", BuildConfig.CASHFREE_SECRET_KEY)
+                                        .addHeader("x-api-version", "2023-08-01")
+                                        .build()
+
+                                    val response = client.newCall(request).execute()
+                                    val responseBody = response.body?.string()
+
+                                    if (response.isSuccessful && responseBody != null) {
+                                        val jsonResponse = JSONObject(responseBody)
+                                        Pair(jsonResponse.getString("payment_session_id"), generatedOrderId)
+                                    } else {
+                                        throw Exception("Cashfree Error: $responseBody")
+                                    }
+                                }
+
+                                val cfSession = CFSession.CFSessionBuilder()
+                                    .setEnvironment(CFSession.Environment.SANDBOX)
+                                    .setPaymentSessionID(sessionData.first)
+                                    .setOrderId(sessionData.second)
+                                    .build()
+
+                                val cfTheme = CFWebCheckoutTheme.CFWebCheckoutThemeBuilder()
+                                    .setNavigationBarBackgroundColor("#5B2D8E")
+                                    .setNavigationBarTextColor("#FFFFFF")
+                                    .build()
+
+                                val cfWebCheckoutPayment = CFWebCheckoutPayment.CFWebCheckoutPaymentBuilder()
+                                    .setSession(cfSession)
+                                    .setCFWebCheckoutUITheme(cfTheme)
+                                    .build()
+
+                                CFPaymentGatewayService.getInstance().doPayment(context as Activity, cfWebCheckoutPayment)
+
+                            } catch (e: Exception) {
+                                Log.e("Cashfree", "Direct API Call failed: ${e.message}")
+                                Toast.makeText(context, "Network issue fetching session. Use Dev Bypass.", Toast.LENGTH_LONG).show()
+                            } finally {
+                                isCashfreeLoading = false
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E5A0)),
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    if (isCashfreeLoading) {
+                        CircularProgressIndicator(color = Color(0xFF1A1A2E), modifier = Modifier.size(24.dp))
+                    } else {
+                        Text("Pay ₹$weeklyPremium via Cashfree", color = Color(0xFF1A1A2E), fontSize = 16.sp, fontWeight = FontWeight.Black)
+                    }
+                }
             }
         }
     }
@@ -351,64 +411,5 @@ fun CoverageRow(text: String) {
         }
         Spacer(modifier = Modifier.width(12.dp))
         Text(text, color = Color.DarkGray, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-    }
-}
-
-// ─── 3. SWIPE TO PAY LOGIC ─────────────────────────────────────────────────
-@Composable
-fun SwipeToPaySlider(weeklyPremium: String, onSwipeComplete: () -> Unit){
-    val sliderWidth = 320.dp
-    val thumbSize = 56.dp
-    val sliderWidthPx = with(LocalDensity.current) { sliderWidth.toPx() }
-    val thumbSizePx = with(LocalDensity.current) { thumbSize.toPx() }
-    val maxDragPx = sliderWidthPx - thumbSizePx
-
-    val offsetX = remember { Animatable(0f) }
-    val coroutineScope = rememberCoroutineScope()
-
-    Box(
-        modifier = Modifier
-            .width(sliderWidth)
-            .height(thumbSize)
-            .background(Color(0xFF0A192F), RoundedCornerShape(32.dp)),
-        contentAlignment = Alignment.CenterStart
-    ) {
-        Text(
-            text = tr("Swipe to Auto-Pay")+ "₹$weeklyPremium >>>",
-            color = Color.White.copy(alpha = 0.6f),
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.align(Alignment.Center)
-        )
-
-        Box(
-            modifier = Modifier
-                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
-                .size(thumbSize)
-                .padding(4.dp)
-                .background(Color.White, RoundedCornerShape(32.dp))
-                .pointerInput(Unit) {
-                    detectHorizontalDragGestures(
-                        onDragEnd = {
-                            coroutineScope.launch {
-                                if (offsetX.value > maxDragPx * 0.7f) {
-                                    offsetX.animateTo(maxDragPx)
-                                    onSwipeComplete()
-                                } else {
-                                    offsetX.animateTo(0f)
-                                }
-                            }
-                        }
-                    ) { change, dragAmount ->
-                        change.consume()
-                        coroutineScope.launch {
-                            val newOffset = (offsetX.value + dragAmount).coerceIn(0f, maxDragPx)
-                            offsetX.snapTo(newOffset)
-                        }
-                    }
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Text("→", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0A192F))
-        }
     }
 }
