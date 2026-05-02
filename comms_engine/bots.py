@@ -172,104 +172,101 @@ class WinkitBotEngine:
                 "• *PAY* – File a claim"
             )
     # ------------------------------------------------------------------
-    # VOICE (IVR)
+    # VOICE (IVR) - POLISHED
     # ------------------------------------------------------------------
 
     def generate_welcome_ivr(self) -> str:
-        """
-        TwiML for the initial greeting when someone calls.
-        Gathers a single digit and posts it to /voice/menu-handler.
-        """
         response = VoiceResponse()
 
+        # Twilio needs the absolute URL to know where to send the digits
+        menu_url = f"{self.base_url}/voice/menu-handler"
+        
         gather = Gather(
             num_digits=1,
-            action=f"{self.base_url}/voice/menu-handler",  # Must be absolute URL
+            action=menu_url,
             method="POST",
             timeout=5
         )
+        # Using a slightly more 'welcoming' script for the demo
         gather.say(
-            "Welcome to Wink IT. "
-            "Press 1 for your latest claim status. "
-            "Press 2 for your trust score.",
+            "Namaste. Welcome to the Wink IT automated assistant. "
+            "To check your latest claim status, press 1. "
+            "To hear your current trust score, press 2. ",
             voice="Polly.Aditi",
             language="en-IN"
         )
         response.append(gather)
 
-        # Fallback if caller doesn't press anything
-        response.say(
-            "We did not receive any input. Please call again. Goodbye.",
-            voice="Polly.Aditi",
-            language="en-IN"
-        )
+        # If they sit in silence for 5 seconds
+        response.say("We did not receive an input. Thank you for using Wink IT. Goodbye.")
         return str(response)
 
     def generate_menu_response(self, digit: str, phone: str) -> str:
-        """
-        TwiML response after the caller presses a digit.
-        """
         response = VoiceResponse()
         clean_phone = self.normalize_phone(phone)
 
-        # --- Look up worker ---
+        # 1. Look up worker
         try:
             worker_res = (
                 self.supabase.table("Workers")
-                .select("worker_id, trust_score")   # FIX: was 'trust', correct column is 'trust_score'
+                .select("worker_id, name, trust_score") 
                 .eq("phone", clean_phone)
                 .execute()
             )
         except Exception as e:
-            logger.error(f"[Voice] Workers lookup failed for {clean_phone}: {e}")
-            response.say(
-                "A system error occurred. Please try again later.",
-                voice="Polly.Aditi", language="en-IN"
-            )
+            logger.error(f"[Voice] DB Worker Lookup Error: {e}")
+            response.say("I am having trouble accessing the database. Please try again later.", voice="Polly.Aditi", language="en-IN")
             return str(response)
 
         if not worker_res.data:
-            response.say(
-                "Account not recognised. Please register on the WinkIT app.",
-                voice="Polly.Aditi", language="en-IN"
-            )
+            response.say("Account not recognized. Please register on the app.", voice="Polly.Aditi", language="en-IN")
             return str(response)
 
-        worker_id = worker_res.data[0]["worker_id"]
+        worker = worker_res.data[0]
+        worker_id = worker["worker_id"]
+        worker_name = worker.get("name", "User")
 
-        # --- Route digit ---
+        # 2. Route Digit
         if digit == "1":
             try:
                 res = (
                     self.supabase.table("claims_and_payouts")
-                    .select("status")
+                    .select("status, payout_amt")
                     .eq("worker_id", worker_id)
                     .order("created_at", desc=True)
                     .limit(1)
                     .execute()
                 )
-                status = res.data[0]["status"] if res.data else "not available"
+                
+                if res.data:
+                    db_status = res.data[0].get("status", "PENDING")
+                    amt = res.data[0].get("payout_amt", 0)
+                    
+                    # Human-friendly mapping
+                    status_map = {
+                        "AUTO_PAID": f"has been settled instantly. A payout of {amt} rupees is in your wallet.",
+                        "APPROVED": f"is approved. Your payout of {amt} rupees is on the way.",
+                        "ESCROW": "is in escrow and being dripped to your wallet hourly.",
+                        "REJECTED": "was rejected by the Fraud Fortress due to a telemetry mismatch."
+                    }
+                    
+                    speech_status = status_map.get(db_status, f"is currently {db_status}.")
+                    response.say(f"Hello {worker_name}. Your latest claim {speech_status}", voice="Polly.Aditi", language="en-IN")
+                else:
+                    response.say(f"Hello {worker_name}. You have no recent claims found.", voice="Polly.Aditi", language="en-IN")
+            
             except Exception as e:
-                logger.error(f"[Voice] claims_and_payouts lookup failed for {worker_id}: {e}")
-                status = "unavailable due to a system error"
-
-            response.say(
-                f"Your latest claim status is {status}.",
-                voice="Polly.Aditi", language="en-IN"
-            )
+                # 🔥 THIS IS THE KEY: Look at your terminal if this fails!
+                logger.error(f"[Voice] Claim Lookup Error for {worker_id}: {e}")
+                response.say("I encountered an error fetching your claim status. Please try again.", voice="Polly.Aditi", language="en-IN")
 
         elif digit == "2":
-            trust_score = worker_res.data[0].get("trust_score", 0)  # FIX: correct column name
-            response.say(
-                f"Your trust score is {trust_score}.",
-                voice="Polly.Aditi", language="en-IN"
-            )
+            score = worker.get("trust_score", 0)
+            response.say(f"Your Wink IT trust score is {score} out of 100. Keep up the good work!", voice="Polly.Aditi", language="en-IN")
 
         else:
-            response.say(
-                "Invalid option. Please call again and press 1 or 2.",
-                voice="Polly.Aditi", language="en-IN"
-            )
+            response.say("That is an invalid option.", voice="Polly.Aditi", language="en-IN")
 
-        response.say("Stay safe. Goodbye.", voice="Polly.Aditi", language="en-IN")
+        # Final goodbye
+        response.say("Stay safe on the roads. Goodbye.", voice="Polly.Aditi", language="en-IN")
         return str(response)
